@@ -7,20 +7,19 @@ import { SettingsView } from "@/components/ui/settings-view"
 import { useExpenses } from "@/hooks/use-expenses"
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
+import { useState } from "react"
 
 export default function ExpenseTrackerApp() {
   const { expenses, categories, addExpense, getExpensesByCategory, getTotalByMonth, addCategory, removeCategory } =
     useExpenses()
   const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+  const [activeTab, setActiveTab] = useState("dashboard")
 
   const monthlyTotal = getTotalByMonth(currentMonth)
   const expensesByCategory = getExpensesByCategory(currentMonth)
 
   const handleAddExpense = () => {
-    const addExpenseTab = document.querySelector('[value="add-expense"]') as HTMLElement
-    if (addExpenseTab) {
-      addExpenseTab.click()
-    }
+    setActiveTab("add-expense")
   }
 
   const handleSubmitExpense = (values: any) => {
@@ -30,6 +29,7 @@ export default function ExpenseTrackerApp() {
       date: values.date.toISOString().slice(0, 10),
       note: values.note,
     })
+    setActiveTab("dashboard") // Volver al dashboard después de agregar un gasto
   }
 
   const handleExportData = () => {
@@ -48,7 +48,7 @@ export default function ExpenseTrackerApp() {
       <div className="container mx-auto p-4">
         <h1 className="text-3xl font-bold mb-6 text-center">Gestor de Gastos</h1>
 
-        <Tabs defaultValue="dashboard" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="dashboard">Inicio</TabsTrigger>
             <TabsTrigger value="add-expense">Agregar Gasto</TabsTrigger>
