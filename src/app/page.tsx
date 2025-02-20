@@ -1,4 +1,5 @@
 "use client"
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExpenseCard } from "@/components/ui/expense-card"
 import { ExpenseForm } from "@/components/ui/expense-form"
@@ -20,6 +21,10 @@ export default function ExpenseTrackerApp() {
 
   const handleAddExpense = () => {
     setActiveTab("add-expense")
+  }
+
+  const handleViewHistory = () => {
+    setActiveTab("history")
   }
 
   const handleSubmitExpense = (values: any) => {
@@ -63,6 +68,7 @@ export default function ExpenseTrackerApp() {
               total={monthlyTotal}
               data={expensesByCategory}
               onAddExpense={handleAddExpense}
+              onViewHistory={handleViewHistory}
             />
           </TabsContent>
 

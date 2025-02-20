@@ -1,6 +1,8 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./card"
-import { Button } from "./button"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./chart"
+"use client"
+
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { PieChart, Pie, Cell } from "recharts"
 
 interface ExpenseCardProps {
@@ -12,11 +14,12 @@ interface ExpenseCardProps {
     value: number
   }>
   onAddExpense?: () => void
+  onViewHistory?: () => void
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82CA9D"]
 
-export function ExpenseCard({ title, description, total, data, onAddExpense }: ExpenseCardProps) {
+export function ExpenseCard({ title, description, total, data, onAddExpense, onViewHistory }: ExpenseCardProps) {
   const chartConfig = data.reduce(
     (acc, item, index) => {
       acc[item.name] = { color: COLORS[index % COLORS.length] }
@@ -66,13 +69,18 @@ export function ExpenseCard({ title, description, total, data, onAddExpense }: E
           ))}
         </div>
       </CardContent>
-      {onAddExpense && (
-        <CardFooter>
+      <CardFooter className="flex flex-col gap-2">
+        {onAddExpense && (
           <Button onClick={onAddExpense} className="w-full">
             Agregar Nuevo Gasto
           </Button>
-        </CardFooter>
-      )}
+        )}
+        {onViewHistory && (
+          <Button onClick={onViewHistory} variant="outline" className="w-full">
+            Ver Gastos del Mes
+          </Button>
+        )}
+      </CardFooter>
     </Card>
   )
 }
