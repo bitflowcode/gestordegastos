@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 
 export interface Expense {
-  id: number
+  id: string // Cambiado de number a string
   amount: number
   category: string
   date: string
@@ -54,16 +54,18 @@ export function useExpenses() {
   const addExpense = (expense: Omit<Expense, "id">) => {
     const newExpense = {
       ...expense,
-      id: Date.now(),
+      id: crypto.randomUUID(), // Usando UUID en lugar de Date.now()
     }
     setExpenses((prevExpenses) => [...prevExpenses, newExpense])
   }
 
-  const deleteExpense = (id: number) => {
+  const deleteExpense = (id: string) => {
+    // Actualizado a string
     setExpenses((prevExpenses) => prevExpenses.filter((expense) => expense.id !== id))
   }
 
-  const updateExpense = (id: number, updatedExpense: Partial<Expense>) => {
+  const updateExpense = (id: string, updatedExpense: Partial<Expense>) => {
+    // Actualizado a string
     setExpenses((prevExpenses) =>
       prevExpenses.map((expense) => (expense.id === id ? { ...expense, ...updatedExpense } : expense)),
     )

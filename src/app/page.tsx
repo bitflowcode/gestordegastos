@@ -11,8 +11,18 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { useState } from "react"
 
 export default function ExpenseTrackerApp() {
-  const { expenses, categories, addExpense, getExpensesByCategory, getTotalByMonth, addCategory, removeCategory } =
-    useExpenses()
+  const {
+    expenses,
+    categories,
+    addExpense,
+    deleteExpense,
+    updateExpense,
+    getExpensesByCategory,
+    getTotalByMonth,
+    addCategory,
+    removeCategory,
+  } = useExpenses()
+
   const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
   const [activeTab, setActiveTab] = useState("dashboard")
 
@@ -34,7 +44,11 @@ export default function ExpenseTrackerApp() {
       date: values.date.toISOString().slice(0, 10),
       note: values.note,
     })
-    setActiveTab("dashboard") // Volver al dashboard después de agregar un gasto
+    setActiveTab("dashboard")
+  }
+
+  const handleEditExpense = (id: string, expense: any) => {
+    updateExpense(id, expense)
   }
 
   const handleExportData = () => {
@@ -77,7 +91,12 @@ export default function ExpenseTrackerApp() {
           </TabsContent>
 
           <TabsContent value="history">
-            <ExpenseHistory expenses={expenses} />
+            <ExpenseHistory
+              expenses={expenses}
+              categories={categories}
+              onDeleteExpense={deleteExpense}
+              onEditExpense={handleEditExpense}
+            />
           </TabsContent>
 
           <TabsContent value="settings">

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { PieChart, Pie, Cell } from "recharts"
+import { formatCurrency } from "@/lib/utils"
 
 interface ExpenseCardProps {
   title: string
@@ -35,7 +36,7 @@ export function ExpenseCard({ title, description, total, data, onAddExpense, onV
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="text-2xl font-bold">Total: ${total.toFixed(2)}</div>
+        <div className="text-2xl font-bold">Total: {formatCurrency(total)}</div>
 
         {/* Chart container with fixed aspect ratio */}
         <div className="aspect-square w-full max-w-[400px] mx-auto">
@@ -63,7 +64,7 @@ export function ExpenseCard({ title, description, total, data, onAddExpense, onV
             <div key={entry.name} className="flex items-center">
               <div className="w-4 h-4 mr-2 rounded" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
               <span>
-                {entry.name}: ${entry.value.toFixed(2)}
+                {entry.name}: {formatCurrency(entry.value)}
               </span>
             </div>
           ))}

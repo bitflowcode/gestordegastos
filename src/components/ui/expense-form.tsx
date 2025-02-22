@@ -4,85 +4,82 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import { CalendarIcon } from "lucide-react"
 
-import { Button } from "./button"
-import { Calendar } from "./calendar"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "./form"
-import { Input } from "./input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select"
-import { Popover, PopoverContent, PopoverTrigger } from "./popover"
-import { Textarea } from "./textarea"
-import { toast } from "./use-toast"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const expenseFormSchema = z.object({
+const formSchema = z.object({
   amount: z.string().min(1, {
-    message: "El monto es requerido.",
+    message: "El importe es requerido.",
   }),
-  category: z.string({
-    required_error: "Por favor selecciona una categoría.",
+  category: z.string().min(1, {
+    message: "La categoría es requerida.",
   }),
   date: z.date({
-    required_error: "Por favor selecciona una fecha.",
+    required_error: "La fecha es requerida.",
   }),
   note: z.string().optional(),
 })
 
-interface ExpenseFormProps {
-  onSubmit: (values: z.infer<typeof expenseFormSchema>) => void
+export interface ExpenseFormProps {
+  onSubmit: (values: z.infer<typeof formSchema>) => void
   categories: string[]
+  initialValues?: {
+    amount: number
+    category: string
+    date: Date
+    note: string
+  }
 }
 
-export function ExpenseForm({ onSubmit, categories }: ExpenseFormProps) {
-  const form = useForm<z.infer<typeof expenseFormSchema>>({
-    resolver: zodResolver(expenseFormSchema),
-    defaultValues: {
-      amount: "",
-      note: "",
-      date: new Date(),
-    },
+export function ExpenseForm({ onSubmit, categories, initialValues }: ExpenseFormProps) {
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: initialValues
+      ? {
+          amount: initialValues.amount.toString(),
+          category: initialValues.category,
+          date: initialValues.date,
+          note: initialValues.note,
+        }
+      : {
+          amount: "",
+          category: "",
+          date: new Date(),
+          note: "",
+        },
   })
-
-  function onFormSubmit(values: z.infer<typeof expenseFormSchema>) {
-    onSubmit(values)
-    toast({
-      title: "Gasto registrado",
-      description: `Se ha registrado un gasto de $${values.amount} en ${values.category}`,
-    })
-    form.reset({
-      amount: "",
-      category: "",
-      date: new Date(),
-      note: "",
-    })
-  }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
           name="amount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Monto</FormLabel>
+              <FormLabel>Importe</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="0.00" {...field} />
+                <Input type="number" step="0.01" placeholder="0.00" {...field} />
               </FormControl>
-              <FormDescription>Ingresa el monto del gasto en tu moneda local.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="category"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoría</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona una categoría" />
@@ -96,11 +93,11 @@ export function ExpenseForm({ onSubmit, categories }: ExpenseFormProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <FormDescription>Selecciona la categoría que mejor describe este gasto.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="date"
@@ -114,7 +111,7 @@ export function ExpenseForm({ onSubmit, categories }: ExpenseFormProps) {
                       variant={"outline"}
                       className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                     >
-                      {field.value ? format(field.value, "PPP", { locale: es }) : <span>Selecciona una fecha</span>}
+                      {field.value ? format(field.value, "P") : <span>Selecciona una fecha</span>}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>
@@ -123,17 +120,23 @@ export function ExpenseForm({ onSubmit, categories }: ExpenseFormProps) {
                   <Calendar
                     mode="single"
                     selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                    onSelect={(date) => {
+                      field.onChange(date)
+                      // Cerrar el popover después de seleccionar
+                      const popoverTrigger = document.querySelector('[aria-expanded="true"]') as HTMLButtonElement
+                      if (popoverTrigger) {
+                        popoverTrigger.click()
+                      }
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
-              <FormDescription>Selecciona la fecha en que realizaste el gasto.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="note"
@@ -141,14 +144,16 @@ export function ExpenseForm({ onSubmit, categories }: ExpenseFormProps) {
             <FormItem>
               <FormLabel>Nota (opcional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Agrega una nota sobre este gasto..." {...field} />
+                <Input placeholder="Añade una nota..." {...field} />
               </FormControl>
-              <FormDescription>Puedes agregar detalles adicionales sobre este gasto.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit">Guardar Gasto</Button>
+
+        <Button type="submit" className="w-full">
+          {initialValues ? "Guardar Cambios" : "Agregar Gasto"}
+        </Button>
       </form>
     </Form>
   )

@@ -1,24 +1,31 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { useTheme } from "next-themes"
+import { useState } from "react"
+import { Download, Plus, Trash2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./alert-dialog"
 
 interface SettingsViewProps {
-  onExportData: () => void
   categories: string[]
   onAddCategory: (category: string) => void
   onRemoveCategory: (category: string) => void
+  onExportData: () => void
 }
 
-export function SettingsView({ onExportData, categories, onAddCategory, onRemoveCategory }: SettingsViewProps) {
-  const { theme, setTheme } = useTheme()
-  const [notifications, setNotifications] = useState(false)
+export function SettingsView({ categories, onAddCategory, onRemoveCategory, onExportData }: SettingsViewProps) {
   const [newCategory, setNewCategory] = useState("")
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
@@ -27,55 +34,111 @@ export function SettingsView({ onExportData, categories, onAddCategory, onRemove
     }
   }
 
+  const handleDeleteCategory = () => {
+    if (categoryToDelete) {
+      onRemoveCategory(categoryToDelete)
+      setCategoryToDelete(null)
+    }
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Configuración</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="theme-toggle">Tema Oscuro</Label>
-          <Switch
-            id="theme-toggle"
-            checked={theme === "dark"}
-            onCheckedChange={(checked: boolean) => setTheme(checked ? "dark" : "light")}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="notifications-toggle">Notificaciones</Label>
-          <Switch
-            id="notifications-toggle"
-            checked={notifications}
-            onCheckedChange={(checked: boolean) => setNotifications(checked)}
-          />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Categorías de Gastos</h3>
-          <ul className="space-y-2">
-            {categories.map((category) => (
-              <li key={category} className="flex items-center justify-between">
-                <span>{category}</span>
-                <Button variant="destructive" size="sm" onClick={() => onRemoveCategory(category)}>
-                  Eliminar
-                </Button>
-              </li>
-            ))}
-          </ul>
-          <div className="flex mt-4">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Categorías de Gastos</CardTitle>
+          <CardDescription>Gestiona las categorías disponibles para clasificar tus gastos</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2 mb-4">
             <Input
+              placeholder="Nueva categoría..."
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
-              placeholder="Nueva categoría"
-              className="mr-2"
+              onKeyPress={(e) => e.key === "Enter" && handleAddCategory()}
             />
-            <Button onClick={handleAddCategory}>Agregar</Button>
+            <Button onClick={handleAddCategory}>
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar
+            </Button>
           </div>
-        </div>
-        <Button onClick={onExportData} className="w-full">
-          Exportar Datos
-        </Button>
-      </CardContent>
-    </Card>
+          <div className="grid gap-2">
+            {categories.map((category) => (
+              <div key={category} className="flex items-center justify-between p-2 rounded-lg border">
+                <span>{category}</span>
+                <Button variant="ghost" size="icon" onClick={() => setCategoryToDelete(category)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Gestión de Datos</CardTitle>
+          <CardDescription>Realiza copias de seguridad de tus datos y restaura información anterior</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="rounded-lg border p-4 space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">Copia de Seguridad</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Descarga todos tus datos (gastos y categorías) en formato JSON. Este archivo te permitirá restaurar toda
+                tu información en caso de cambiar de dispositivo o si necesitas recuperar tus datos.
+              </p>
+              <Button onClick={onExportData} className="w-full sm:w-auto">
+                <Download className="h-4 w-4 mr-2" />
+                Descargar Copia de Seguridad
+              </Button>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-2">Restaurar Datos</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Restaura una copia de seguridad previa seleccionando el archivo JSON que descargaste anteriormente.
+              </p>
+              <Input
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    const reader = new FileReader()
+                    reader.onload = (e) => {
+                      try {
+                        const data = JSON.parse(e.target?.result as string)
+                        // TODO: Implementar la restauración de datos
+                        console.log("Datos a restaurar:", data)
+                      } catch (error) {
+                        console.error("Error al leer el archivo:", error)
+                      }
+                    }
+                    reader.readAsText(file)
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={!!categoryToDelete} onOpenChange={() => setCategoryToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Los gastos asociados a esta categoría se mantendrán pero no podrás
+              seleccionar esta categoría para nuevos gastos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCategory}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   )
 }
 
