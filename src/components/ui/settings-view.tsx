@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./alert-dialog"
+import { ThemeToggle } from "./theme-toggle"
 
 interface SettingsViewProps {
   categories: string[]
@@ -43,6 +44,24 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Apariencia</CardTitle>
+          <CardDescription>Personaliza el aspecto visual de la aplicación</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium mb-1">Tema</h4>
+              <p className="text-sm text-muted-foreground">
+                Selecciona entre tema claro, oscuro o el predeterminado del sistema
+              </p>
+            </div>
+            <ThemeToggle />
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Categorías de Gastos</CardTitle>
