@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { generateUUID } from "@/lib/utils"
 
 export interface Expense {
   id: string // Cambiado de number a string
@@ -54,7 +55,7 @@ export function useExpenses() {
   const addExpense = (expense: Omit<Expense, "id">) => {
     const newExpense = {
       ...expense,
-      id: crypto.randomUUID(), // Usando UUID en lugar de Date.now()
+      id: generateUUID(), // Usando UUID compatible con todos los navegadores
     }
     setExpenses((prevExpenses) => [...prevExpenses, newExpense])
   }

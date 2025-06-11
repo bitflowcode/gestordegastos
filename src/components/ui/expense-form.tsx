@@ -4,7 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format } from "date-fns"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, Scan } from "lucide-react"
+import { useState } from "react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ReceiptScanner } from "./receipt-scanner"
 
 const formSchema = z.object({
   amount: z.string().min(1, {
@@ -39,6 +41,8 @@ export interface ExpenseFormProps {
 }
 
 export function ExpenseForm({ onSubmit, categories, initialValues }: ExpenseFormProps) {
+  const [showScanner, setShowScanner] = useState(false)
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: initialValues
@@ -56,9 +60,43 @@ export function ExpenseForm({ onSubmit, categories, initialValues }: ExpenseForm
         },
   })
 
+  const handleScannerSubmit = (scannedValues: any) => {
+    // Actualizar el formulario con los datos escaneados
+    form.setValue("amount", scannedValues.amount?.toString() || "")
+    form.setValue("category", scannedValues.category || "")
+    form.setValue("date", scannedValues.date || new Date())
+    form.setValue("note", scannedValues.note || "")
+    
+    // Cerrar el escáner - NO llamar a onSubmit aquí
+    // El usuario debe confirmar los datos en el formulario
+    setShowScanner(false)
+  }
+
+  if (showScanner) {
+    return (
+      <ReceiptScanner
+        categories={categories}
+        onSubmit={handleScannerSubmit}
+        onClose={() => setShowScanner(false)}
+      />
+    )
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Botón del escáner */}
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowScanner(true)}
+            className="w-full"
+          >
+            <Scan className="h-4 w-4 mr-2" />
+            Escanear Recibo
+          </Button>
+        </div>
         <FormField
           control={form.control}
           name="amount"
@@ -111,7 +149,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues }: ExpenseForm
                       variant={"outline"}
                       className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                     >
-                      {field.value ? format(field.value, "P") : <span>Selecciona una fecha</span>}
+                      {field.value ? format(field.value, "dd/MM/yyyy") : <span>Selecciona una fecha</span>}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>

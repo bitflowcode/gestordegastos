@@ -38,11 +38,21 @@ export default function ExpenseTrackerApp() {
   }
 
   const handleSubmitExpense = (values: any) => {
+    // Asegurar que la fecha esté en el formato correcto
+    let dateString: string
+    if (values.date instanceof Date) {
+      dateString = values.date.toISOString().slice(0, 10)
+    } else if (typeof values.date === 'string') {
+      dateString = values.date
+    } else {
+      dateString = new Date().toISOString().slice(0, 10)
+    }
+
     addExpense({
       amount: Number.parseFloat(values.amount),
       category: values.category,
-      date: values.date.toISOString().slice(0, 10),
-      note: values.note,
+      date: dateString,
+      note: values.note || "",
     })
     setActiveTab("dashboard")
   }
