@@ -4,11 +4,21 @@ import * as pdfjsLib from 'pdfjs-dist'
 
 // Configuración del worker para PDF.js
 if (typeof window !== 'undefined') {
-  // Usar el worker que viene con el paquete npm
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.mjs',
-    import.meta.url
-  ).toString()
+  // En producción, usar CDN estable para evitar problemas de build
+  if (process.env.NODE_ENV === 'production') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.2.67/build/pdf.worker.mjs'
+  } else {
+    // En desarrollo, intentar usar el worker local, con fallback a CDN
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.mjs',
+        import.meta.url
+      ).toString()
+    } catch (error) {
+      console.warn('No se pudo cargar worker local, usando CDN')
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.2.67/build/pdf.worker.mjs'
+    }
+  }
 }
 
 export interface PdfToImageOptions {
