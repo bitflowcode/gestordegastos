@@ -4,9 +4,9 @@ import * as pdfjsLib from 'pdfjs-dist'
 
 // Configuración del worker para PDF.js
 if (typeof window !== 'undefined') {
-  // En producción, usar CDN estable para evitar problemas de build
+  // En producción, usar CDN con la misma versión que el paquete instalado
   if (process.env.NODE_ENV === 'production') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.2.67/build/pdf.worker.mjs'
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.mjs'
   } else {
     // En desarrollo, intentar usar el worker local, con fallback a CDN
     try {
@@ -16,7 +16,7 @@ if (typeof window !== 'undefined') {
       ).toString()
     } catch (error) {
       console.warn('No se pudo cargar worker local, usando CDN')
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.2.67/build/pdf.worker.mjs'
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.mjs'
     }
   }
 }
