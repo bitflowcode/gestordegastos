@@ -38,3 +38,13 @@ export function generateUUID(): string {
   })
 }
 
+/**
+ * Convierte una fecha a string en formato YYYY-MM-DD sin problemas de zona horaria
+ */
+export function formatDateToString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+

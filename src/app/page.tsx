@@ -8,6 +8,7 @@ import { SettingsView } from "@/components/ui/settings-view"
 import { useExpenses } from "@/hooks/use-expenses"
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
+import { formatDateToString } from "@/lib/utils"
 import { useState } from "react"
 
 export default function ExpenseTrackerApp() {
@@ -38,14 +39,14 @@ export default function ExpenseTrackerApp() {
   }
 
   const handleSubmitExpense = (values: any) => {
-    // Asegurar que la fecha esté en el formato correcto
+    // Asegurar que la fecha esté en el formato correcto sin problemas de zona horaria
     let dateString: string
     if (values.date instanceof Date) {
-      dateString = values.date.toISOString().slice(0, 10)
+      dateString = formatDateToString(values.date)
     } else if (typeof values.date === 'string') {
       dateString = values.date
     } else {
-      dateString = new Date().toISOString().slice(0, 10)
+      dateString = formatDateToString(new Date())
     }
 
     addExpense({

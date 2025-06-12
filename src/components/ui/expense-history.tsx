@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Edit, Download, FileDown, Printer, Search, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatDateToString } from "@/lib/utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./sheet"
 import { ExpenseForm } from "./expense-form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select"
@@ -56,7 +56,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
       onEditExpense(expenseToEdit.id, {
         amount: Number.parseFloat(values.amount),
         category: values.category,
-        date: values.date.toISOString().slice(0, 10),
+        date: formatDateToString(values.date),
         note: values.note,
       })
       setExpenseToEdit(null)
