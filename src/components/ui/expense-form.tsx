@@ -38,10 +38,13 @@ export interface ExpenseFormProps {
     date: Date
     note: string
   }
+  addCategory?: (cat: string) => void
 }
 
-export function ExpenseForm({ onSubmit, categories, initialValues }: ExpenseFormProps) {
+export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }: ExpenseFormProps) {
   const [showScanner, setShowScanner] = useState(false)
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCategory, setNewCategory] = useState("")
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -117,7 +120,16 @@ export function ExpenseForm({ onSubmit, categories, initialValues }: ExpenseForm
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoría</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select
+                onValueChange={(val) => {
+                  if (val === "__new__") {
+                    setAddingCategory(true)
+                  } else {
+                    field.onChange(val)
+                  }
+                }}
+                defaultValue={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona una categoría" />
@@ -129,8 +141,43 @@ export function ExpenseForm({ onSubmit, categories, initialValues }: ExpenseForm
                       {category}
                     </SelectItem>
                   ))}
+                  <SelectItem value="__new__" className="text-blue-600 font-semibold">
+                    + Nueva categoría
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              {addingCategory && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    autoFocus
+                    placeholder="Nombre de la nueva categoría"
+                    value={newCategory}
+                    onChange={e => setNewCategory(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newCategory.trim()) {
+                        if (addCategory) addCategory(newCategory.trim())
+                        form.setValue("category", newCategory.trim())
+                        setAddingCategory(false)
+                        setNewCategory("")
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (newCategory.trim()) {
+                        if (addCategory) addCategory(newCategory.trim())
+                        form.setValue("category", newCategory.trim())
+                        setAddingCategory(false)
+                        setNewCategory("")
+                      }
+                    }}
+                  >
+                    Añadir
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => { setAddingCategory(false); setNewCategory("") }}>Cancelar</Button>
+                </div>
+              )}
               <FormMessage />
             </FormItem>
           )}

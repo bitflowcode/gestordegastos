@@ -10,6 +10,8 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 import { formatDateToString } from "@/lib/utils"
 import { useState } from "react"
+import { FabAddExpense } from "@/components/ui/fab-add-expense"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 export default function ExpenseTrackerApp() {
   const {
@@ -24,11 +26,26 @@ export default function ExpenseTrackerApp() {
     removeCategory,
   } = useExpenses()
 
-  const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+  // Obtener todos los meses con gastos registrados
+  const allMonths = Array.from(new Set(expenses.map(e => e.date.slice(0, 7)))).sort()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [activeTab, setActiveTab] = useState("dashboard")
 
-  const monthlyTotal = getTotalByMonth(currentMonth)
-  const expensesByCategory = getExpensesByCategory(currentMonth)
+  // Calcular el índice del mes seleccionado
+  const selectedMonthIndex = allMonths.indexOf(selectedMonth)
+
+  // Actualizar resumen según el mes seleccionado
+  const monthlyTotal = getTotalByMonth(selectedMonth)
+  const expensesByCategory = getExpensesByCategory(selectedMonth)
+
+  // Funciones para navegar entre meses
+  const goToPrevMonth = () => {
+    if (selectedMonthIndex > 0) setSelectedMonth(allMonths[selectedMonthIndex - 1])
+  }
+  const goToNextMonth = () => {
+    if (selectedMonthIndex < allMonths.length - 1) setSelectedMonth(allMonths[selectedMonthIndex + 1])
+  }
 
   const handleAddExpense = () => {
     setActiveTab("add-expense")
@@ -87,18 +104,30 @@ export default function ExpenseTrackerApp() {
           </TabsList>
 
           <TabsContent value="dashboard">
+            {/* Selector de mes con flechas */}
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <button onClick={goToPrevMonth} disabled={selectedMonthIndex <= 0} className="p-2 disabled:opacity-30">
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <span className="text-lg font-medium">
+                {selectedMonth ? new Date(selectedMonth + "-01").toLocaleString("es-ES", { month: "long", year: "numeric" }) : ""}
+              </span>
+              <button onClick={goToNextMonth} disabled={selectedMonthIndex >= allMonths.length - 1} className="p-2 disabled:opacity-30">
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </div>
             <ExpenseCard
               title="Resumen del Mes"
               description="Vista general de tus gastos"
               total={monthlyTotal}
               data={expensesByCategory}
-              onAddExpense={handleAddExpense}
               onViewHistory={handleViewHistory}
             />
+            <FabAddExpense onClick={() => setActiveTab("add-expense")}/>
           </TabsContent>
 
           <TabsContent value="add-expense">
-            <ExpenseForm onSubmit={handleSubmitExpense} categories={categories} />
+            <ExpenseForm onSubmit={handleSubmitExpense} categories={categories} addCategory={addCategory} />
           </TabsContent>
 
           <TabsContent value="history">
