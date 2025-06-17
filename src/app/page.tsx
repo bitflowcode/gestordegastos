@@ -9,9 +9,32 @@ import { useExpenses } from "@/hooks/use-expenses"
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 import { formatDateToString } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { FabAddExpense } from "@/components/ui/fab-add-expense"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Edit, Trash2 } from "lucide-react"
+import { useRecurringExpenses } from "@/hooks/use-recurring-expenses"
+import { RecurringExpenseForm } from "@/components/ui/recurring-expense-form"
+import type { Expense } from "@/hooks/use-expenses"
+import type { RecurringExpense } from "@/hooks/use-recurring-expenses"
+
+// Lógica para sugerir recurrentes
+function getRecurringSuggestions(expenses: Expense[], recurrings: RecurringExpense[]) {
+  // Buscar gastos que se repiten (mismo importe y categoría, en al menos 2 meses distintos, y no son recurrentes ya)
+  const map = new Map<string, Expense[]>()
+  expenses.forEach((e: Expense) => {
+    const key = `${e.amount}|${e.category}`
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(e)
+  })
+  // Sugerir si hay al menos 2 meses distintos y no existe ya como recurrente
+  return Array.from(map.values())
+    .filter((arr: Expense[]) => {
+      const months = new Set(arr.map((e: Expense) => e.date.slice(0, 7)))
+      const already = recurrings.some((r: RecurringExpense) => r.amount === arr[0].amount && r.category === arr[0].category)
+      return months.size >= 2 && !already
+    })
+    .map((arr: Expense[]) => arr[0]) // Sugerir el primero de cada grupo
+}
 
 export default function ExpenseTrackerApp() {
   const {
@@ -25,6 +48,13 @@ export default function ExpenseTrackerApp() {
     addCategory,
     removeCategory,
   } = useExpenses()
+
+  const {
+    recurrings,
+    addRecurring,
+    updateRecurring,
+    deleteRecurring,
+  } = useRecurringExpenses()
 
   // Obtener todos los meses con gastos registrados
   const allMonths = Array.from(new Set(expenses.map(e => e.date.slice(0, 7)))).sort()
@@ -90,9 +120,41 @@ export default function ExpenseTrackerApp() {
     linkElement.click()
   }
 
+  // Estado para modal de recurrentes
+  const [showRecurringForm, setShowRecurringForm] = useState(false)
+  const [editingRecurring, setEditingRecurring] = useState(null as null | string)
+
+  // Alta automática de recurrentes
+  useEffect(() => {
+    if (!recurrings.length || !expenses.length) return
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    recurrings.forEach(rec => {
+      const day = String(Math.min(rec.day, 28)) // Evitar problemas con febrero
+      const dateStr = `${year}-${month}-${day}`
+      const exists = expenses.some(e =>
+        e.category === rec.category &&
+        e.amount === rec.amount &&
+        e.date === dateStr &&
+        e.note === rec.note
+      )
+      if (!exists && now.getDate() >= rec.day) {
+        addExpense({
+          amount: rec.amount,
+          category: rec.category,
+          date: dateStr,
+          note: rec.note || "(recurrente)",
+        })
+      }
+    })
+  }, [recurrings, expenses])
+
+  const suggestions = getRecurringSuggestions(expenses, recurrings)
+
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto p-6 max-w-screen-lg">
         <h1 className="text-3xl font-bold mb-6 text-center">Gestor de Gastos</h1>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -123,6 +185,116 @@ export default function ExpenseTrackerApp() {
               data={expensesByCategory}
               onViewHistory={handleViewHistory}
             />
+            {/* Tarjeta de Gastos Recurrentes */}
+            <div className="mt-6 mb-4">
+              <div className="rounded-xl bg-blue-50 border border-blue-200 shadow p-6 flex flex-col items-start w-full">
+                <h2 className="text-lg font-bold text-blue-800 mb-1">Gastos Recurrentes</h2>
+                <p className="text-blue-900 mb-4 text-sm">Programa aquí tus gastos fijos mensuales (suscripciones, alquiler, servicios, etc.) y olvídate de añadirlos manualmente cada mes.</p>
+                <ul className="w-full mb-4">
+                  {recurrings.length === 0 && <li className="text-blue-700 text-sm">No tienes gastos recurrentes registrados.</li>}
+                  {recurrings.map(r => (
+                    <li key={r.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                      <span className="flex items-center gap-2 text-blue-900">
+                        <span className="text-xl">🔄</span>
+                        <span className="font-medium">{r.category}</span>
+                        <span className="text-xs text-blue-700">día {r.day}</span>
+                        <span className="ml-2 text-sm">{r.note}</span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <button onClick={() => { setEditingRecurring(r.id); setShowRecurringForm(true) }} className="p-1 text-blue-700 hover:text-blue-900"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => deleteRecurring(r.id)} className="p-1 text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow transition-colors"
+                  onClick={() => { setEditingRecurring(null); setShowRecurringForm(true) }}
+                >
+                  Agregar Gasto Recurrente
+                </button>
+              </div>
+            </div>
+            {/* Lista de Gastos Recurrentes del Mes */}
+            <div className="mb-4">
+              <div className="rounded-xl bg-[#fbebce] border border-[#F5BE4C] shadow p-6 flex flex-col items-start w-full">
+                <h2 className="text-lg font-bold text-blue-900 mb-2">Lista de Gastos Recurrentes del Mes</h2>
+                <ul className="w-full">
+                  {expenses.filter(e =>
+                    recurrings.some(r =>
+                      e.category === r.category &&
+                      e.amount === r.amount &&
+                      e.date.startsWith(selectedMonth)
+                    )
+                  ).length === 0 && (
+                    <li className="text-blue-700 text-sm">No hay gastos recurrentes materializados este mes.</li>
+                  )}
+                  {expenses.filter(e =>
+                    recurrings.some(r =>
+                      e.category === r.category &&
+                      e.amount === r.amount &&
+                      e.date.startsWith(selectedMonth)
+                    )
+                  ).map(e => (
+                    <li key={e.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                      <span className="flex flex-col">
+                        <span className="font-medium text-blue-900">{e.category}</span>
+                        <span className="text-xs text-blue-700">{new Date(e.date).toLocaleDateString("es-ES")}</span>
+                        <span className="text-sm text-blue-900">{e.note}</span>
+                      </span>
+                      <span className="font-semibold text-blue-900">{e.amount.toFixed(2)} €</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            {/* Sugerencias de recurrentes */}
+            {suggestions.length > 0 && (
+              <div className="mb-4">
+                <div className="rounded-xl bg-[#b8fcca] border border-[#92C8A0] shadow p-4 flex flex-col items-start">
+                  <h3 className="text-base font-bold text-blue-900 mb-1">¿Quieres marcar alguno de estos gastos como recurrente?</h3>
+                  <ul className="w-full mb-2">
+                    {suggestions.map(s => (
+                      <li key={s.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                        <span className="flex items-center gap-2 text-blue-900">
+                          <span className="font-medium">{s.category}</span>
+                          <span className="text-xs text-blue-700">{s.amount} €</span>
+                        </span>
+                        <button
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded shadow text-sm"
+                          onClick={() => addRecurring({ amount: s.amount, category: s.category, day: Number(s.date.slice(8, 10)), note: s.note })}
+                        >
+                          Marcar como recurrente
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="text-xs text-blue-700">Detectamos gastos similares en meses distintos.</span>
+                </div>
+              </div>
+            )}
+            {/* Modal de formulario de recurrentes */}
+            {showRecurringForm && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+                  <h3 className="text-lg font-bold mb-4">{editingRecurring ? "Editar Gasto Recurrente" : "Agregar Gasto Recurrente"}</h3>
+                  <RecurringExpenseForm
+                    categories={categories}
+                    initialValues={editingRecurring ? recurrings.find(r => r.id === editingRecurring) : undefined}
+                    onSubmit={values => {
+                      if (editingRecurring) {
+                        updateRecurring(editingRecurring, values)
+                      } else {
+                        addRecurring(values)
+                      }
+                      setShowRecurringForm(false)
+                      setEditingRecurring(null)
+                    }}
+                    onCancel={() => { setShowRecurringForm(false); setEditingRecurring(null) }}
+                  />
+                </div>
+              </div>
+            )}
             <FabAddExpense onClick={() => setActiveTab("add-expense")}/>
           </TabsContent>
 

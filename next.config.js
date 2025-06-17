@@ -1,5 +1,10 @@
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+})
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig = withPWA({
   reactStrictMode: true,
   webpack: (config, { isServer }) => {
     // Solo aplicar configuraciones en el cliente
@@ -17,7 +22,7 @@ const nextConfig = {
   experimental: {
     esmExternals: 'loose'
   },
-}
+})
 
 module.exports = nextConfig
 

@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ReceiptScanner } from "./receipt-scanner"
+import { useRecurringExpenses } from "@/hooks/use-recurring-expenses"
 
 const formSchema = z.object({
   amount: z.string().min(1, {
@@ -45,6 +46,8 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
   const [showScanner, setShowScanner] = useState(false)
   const [addingCategory, setAddingCategory] = useState(false)
   const [newCategory, setNewCategory] = useState("")
+  const [isRecurring, setIsRecurring] = useState(false)
+  const { addRecurring } = useRecurringExpenses()
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,7 +55,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
       ? {
           amount: initialValues.amount.toString(),
           category: initialValues.category,
-          date: initialValues.date,
+          date: typeof initialValues.date === 'string' ? new Date(initialValues.date) : initialValues.date,
           note: initialValues.note,
         }
       : {
@@ -87,7 +90,21 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form
+        onSubmit={form.handleSubmit((values) => {
+          onSubmit(values)
+          if (isRecurring) {
+            const date = values.date instanceof Date ? values.date : new Date(values.date)
+            addRecurring({
+              amount: parseFloat(values.amount),
+              category: values.category,
+              day: date.getDate(),
+              note: values.note,
+            })
+          }
+        })}
+        className="space-y-8"
+      >
         {/* Botón del escáner */}
         <div className="flex justify-center">
           <Button
@@ -107,7 +124,15 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
             <FormItem>
               <FormLabel>Importe</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  inputMode="decimal"
+                  pattern="[0-9]*"
+                  style={{ fontSize: 16 }}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -183,6 +208,30 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
           )}
         />
 
+        <div className="space-y-2">
+          <div className="text-sm font-medium">¿Es un gasto recurrente?</div>
+          <div className="flex gap-4 items-center">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="recurring"
+                checked={!isRecurring}
+                onChange={() => setIsRecurring(false)}
+              />
+              No recurrente
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="recurring"
+                checked={isRecurring}
+                onChange={() => setIsRecurring(true)}
+              />
+              Recurrente
+            </label>
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="date"
@@ -201,7 +250,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                   <Calendar
                     mode="single"
                     selected={field.value}
