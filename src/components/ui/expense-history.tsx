@@ -29,6 +29,7 @@ interface Expense {
   category: string
   date: string
   note?: string
+  isRecurring?: boolean
 }
 
 interface ExpenseHistoryProps {
@@ -58,6 +59,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
         category: values.category,
         date: formatDateToString(values.date),
         note: values.note,
+        isRecurring: values.isRecurring,
       })
       setExpenseToEdit(null)
     }
@@ -124,7 +126,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
     // Tabla de gastos
     const tableData = filteredExpenses.map((expense) => [
       new Date(expense.date).toLocaleDateString("es-ES"),
-      expense.category,
+      (expense.isRecurring || expense.note?.includes('recurrente') || expense.note?.includes('🔄')) ? '🔄 ' + expense.category : expense.category,
       formatCurrency(expense.amount),
       expense.note || "-",
     ])
@@ -168,7 +170,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
               (expense) => `
             <tr>
               <td>${new Date(expense.date).toLocaleDateString("es-ES")}</td>
-              <td>${expense.category}</td>
+              <td>${(expense.isRecurring || expense.note?.includes('recurrente') || expense.note?.includes('🔄')) ? '🔄 ' : ''}${expense.category}</td>
               <td>${formatCurrency(expense.amount)}</td>
               <td>${expense.note || "-"}</td>
             </tr>
@@ -267,7 +269,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
               {filteredExpenses.map((expense) => (
                 <TableRow key={expense.id}>
                   <TableCell>{new Date(expense.date).toLocaleDateString("es-ES")}</TableCell>
-                  <TableCell>{expense.category}</TableCell>
+                  <TableCell>{(expense.isRecurring || expense.note?.includes('recurrente') || expense.note?.includes('🔄')) ? '🔄 ' + expense.category : expense.category}</TableCell>
                   <TableCell>{expense.note || "-"}</TableCell>
                   <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
                   <TableCell className="text-right">
@@ -316,6 +318,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
                 category: expenseToEdit.category,
                 date: new Date(expenseToEdit.date),
                 note: expenseToEdit.note || "",
+                isRecurring: expenseToEdit.isRecurring || false,
               }}
             />
           )}

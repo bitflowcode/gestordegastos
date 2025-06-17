@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format } from "date-fns"
 import { CalendarIcon, Scan } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,7 @@ const formSchema = z.object({
     required_error: "La fecha es requerida.",
   }),
   note: z.string().optional(),
+  isRecurring: z.boolean().optional(),
 })
 
 export interface ExpenseFormProps {
@@ -38,6 +39,7 @@ export interface ExpenseFormProps {
     category: string
     date: Date
     note: string
+    isRecurring?: boolean
   }
   addCategory?: (cat: string) => void
 }
@@ -46,8 +48,8 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
   const [showScanner, setShowScanner] = useState(false)
   const [addingCategory, setAddingCategory] = useState(false)
   const [newCategory, setNewCategory] = useState("")
-  const [isRecurring, setIsRecurring] = useState(false)
   const { addRecurring } = useRecurringExpenses()
+  const [isNativeDate, setIsNativeDate] = useState(false)
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,14 +59,25 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
           category: initialValues.category,
           date: typeof initialValues.date === 'string' ? new Date(initialValues.date) : initialValues.date,
           note: initialValues.note,
+          isRecurring: initialValues.isRecurring || false,
         }
       : {
           amount: "",
           category: "",
           date: new Date(),
           note: "",
+          isRecurring: false,
         },
   })
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ua = navigator.userAgent
+      if (/firefox|safari/i.test(ua) && !/chrome|chromium|edg/i.test(ua)) {
+        setIsNativeDate(true)
+      }
+    }
+  }, [])
 
   const handleScannerSubmit = (scannedValues: any) => {
     // Actualizar el formulario con los datos escaneados
@@ -92,8 +105,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((values) => {
-          onSubmit(values)
-          if (isRecurring) {
+          if (values.isRecurring) {
             const date = values.date instanceof Date ? values.date : new Date(values.date)
             addRecurring({
               amount: parseFloat(values.amount),
@@ -101,7 +113,12 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
               day: date.getDate(),
               note: values.note,
             })
+            // Marcar el gasto original como recurrente añadiendo la nota y un flag
+            if (!values.note?.includes('🔄')) {
+              values.note = (values.note ? values.note + ' ' : '') + '🔄 (recurrente)'
+            }
           }
+          onSubmit(values)
         })}
         className="space-y-8"
       >
@@ -215,8 +232,8 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
               <input
                 type="radio"
                 name="recurring"
-                checked={!isRecurring}
-                onChange={() => setIsRecurring(false)}
+                checked={!form.watch('isRecurring')}
+                onChange={() => form.setValue('isRecurring', false)}
               />
               No recurrente
             </label>
@@ -224,8 +241,8 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
               <input
                 type="radio"
                 name="recurring"
-                checked={isRecurring}
-                onChange={() => setIsRecurring(true)}
+                checked={form.watch('isRecurring')}
+                onChange={() => form.setValue('isRecurring', true)}
               />
               Recurrente
             </label>
@@ -238,34 +255,51 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel>Fecha</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                    >
-                      {field.value ? format(field.value, "dd/MM/yyyy") : <span>Selecciona una fecha</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-[9999]" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={(date) => {
-                      field.onChange(date)
-                      // Cerrar el popover después de seleccionar
-                      const popoverTrigger = document.querySelector('[aria-expanded="true"]') as HTMLButtonElement
-                      if (popoverTrigger) {
-                        popoverTrigger.click()
-                      }
+              {/*
+                En Firefox y Safari se usa el input nativo type="date" para máxima compatibilidad.
+                En el resto de navegadores se usa el calendario visual con popover.
+              */}
+              {isNativeDate ? (
+                <FormControl>
+                  <Input
+                    type="date"
+                    value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                    onChange={e => {
+                      const val = e.target.value
+                      field.onChange(val ? new Date(val) : null)
                     }}
-                    initialFocus
                   />
-                </PopoverContent>
-              </Popover>
+                </FormControl>
+              ) : (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                      >
+                        {field.value ? format(field.value, "dd/MM/yyyy") : <span>Selecciona una fecha</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={(date) => {
+                        field.onChange(date)
+                        // Cerrar el popover después de seleccionar fecha
+                        const popoverTrigger = document.querySelector('[aria-expanded="true"]') as HTMLButtonElement
+                        if (popoverTrigger) {
+                          popoverTrigger.click()
+                        }
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
               <FormMessage />
             </FormItem>
           )}

@@ -9,6 +9,7 @@ export interface Expense {
   category: string
   date: string
   note?: string
+  isRecurring?: boolean // Nuevo campo para marcar si el gasto es recurrente
 }
 
 const STORAGE_KEY = "expenses-data"

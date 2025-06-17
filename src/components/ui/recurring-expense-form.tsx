@@ -54,88 +54,127 @@ export function RecurringExpenseForm({
   }, [initialValues])
 
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((values) => {
-          onSubmit({
-            amount: parseFloat(values.amount),
-            category: values.category,
-            day: values.day,
-            note: values.note,
-          })
-        })}
-        className="space-y-6"
-      >
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Importe</FormLabel>
-              <FormControl>
-                <Input type="number" step="0.01" inputMode="decimal" pattern="[0-9]*" style={{ fontSize: 16 }} placeholder="0.00" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categoría</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+    <div className="bg-background text-foreground rounded-xl shadow-lg p-6 w-full max-w-md">
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit((values) => {
+            onSubmit({
+              amount: parseFloat(values.amount),
+              category: values.category,
+              day: values.day,
+              note: values.note,
+            })
+          })}
+          className="space-y-6"
+        >
+
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Importe</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una categoría" />
-                  </SelectTrigger>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    inputMode="decimal"
+                    pattern="[0-9]*"
+                    placeholder="0.00"
+                    style={{ fontSize: 16 }}
+                    {...field}
+                    className="bg-background text-foreground"
+                  />
                 </FormControl>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="day"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Día del mes</FormLabel>
-              <FormControl>
-                <select {...field} className="w-full rounded border px-3 py-2" value={field.value} onChange={e => field.onChange(Number(e.target.value))}>
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                    <option key={day} value={day}>{day}</option>
-                  ))}
-                </select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="note"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nota (opcional)</FormLabel>
-              <FormControl>
-                <Input placeholder="Añade una nota..." style={{ fontSize: 16 }} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="flex gap-2 justify-end">
-          <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
-          <Button type="submit">Guardar</Button>
-        </div>
-      </form>
-    </Form>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categoría</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="bg-background text-foreground">
+                      <SelectValue placeholder="Selecciona una categoría" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="day"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Día del mes</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    value={field.value}
+                    onChange={e => field.onChange(Number(e.target.value))}
+                    className="w-full rounded border border-border px-3 py-2 bg-background text-foreground"
+                  >
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="note"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nota (opcional)</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Añade una nota..."
+                    style={{ fontSize: 16 }}
+                    {...field}
+                    className="bg-background text-foreground"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-background text-foreground border-border"
+              onClick={onCancel}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" className="bg-primary text-primary-foreground">
+              Guardar
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   )
-} 
+}
