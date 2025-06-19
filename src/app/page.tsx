@@ -189,17 +189,17 @@ export default function ExpenseTrackerApp() {
             />
             {/* Tarjeta de Gastos Recurrentes */}
             <div className="mt-6 mb-4">
-              <div className="rounded-xl bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 shadow p-6 flex flex-col items-start w-full">
-                <h2 className="text-lg font-bold text-blue-800 mb-1">Gastos Recurrentes</h2>
-                <p className="text-blue-900 mb-4 text-sm">Programa aquí tus gastos fijos mensuales (suscripciones, alquiler, servicios, etc.) y olvídate de añadirlos manualmente cada mes.</p>
+              <div className="rounded-xl bg-background text-foreground border border-border shadow p-6 flex flex-col items-start w-full">
+                <h2 className="text-lg font-bold text-foreground mb-1">Gastos Recurrentes</h2>
+                <p className="text-foreground mb-4 text-sm">Programa aquí tus gastos fijos mensuales (suscripciones, alquiler, servicios, etc.) y olvídate de añadirlos manualmente cada mes.</p>
                 <ul className="w-full mb-4">
-                  {recurrings.length === 0 && <li className="text-blue-700 text-sm">No tienes gastos recurrentes registrados.</li>}
+                  {recurrings.length === 0 && <li className="text-muted-foreground text-sm">No tienes gastos recurrentes registrados.</li>}
                   {recurrings.map(r => (
                     <li key={r.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                      <span className="flex items-center gap-2 text-blue-900">
+                      <span className="flex items-center gap-2 text-foreground">
                         <span className="text-xl">🔄</span>
                         <span className="font-medium">{r.category}</span>
-                        <span className="text-xs text-blue-700">día {r.day}</span>
+                        <span className="text-xs text-muted-foreground">día {r.day}</span>
                         <span className="ml-2 text-sm">{r.note}</span>
                       </span>
                       <span className="flex items-center gap-2">
@@ -219,8 +219,8 @@ export default function ExpenseTrackerApp() {
             </div>
             {/* Lista de Gastos Recurrentes del Mes */}
             <div className="mb-4">
-              <div className="rounded-xl bg-[#FBE9C7] dark:bg-yellow-900 border border-[#F5BE4C] dark:border-yellow-700 shadow p-6 flex flex-col items-start w-full">
-                <h2 className="text-lg font-bold text-blue-900 mb-2">Lista de Gastos Recurrentes del Mes</h2>
+              <div className="rounded-xl bg-background text-foreground border border-border shadow p-6 flex flex-col items-start w-full">
+                <h2 className="text-lg font-bold text-foreground mb-2">Lista de Gastos Recurrentes del Mes</h2>
                 <ul className="w-full">
                   {expenses.filter(e =>
                     (e.isRecurring || 
@@ -232,7 +232,7 @@ export default function ExpenseTrackerApp() {
                        e.date.startsWith(selectedMonth)
                      )) && e.date.startsWith(selectedMonth)
                   ).length === 0 && (
-                    <li className="text-blue-700 text-sm">No hay gastos recurrentes materializados este mes.</li>
+                    <li className="text-muted-foreground text-sm">No hay gastos recurrentes materializados este mes.</li>
                   )}
                   {expenses.filter(e =>
                     (e.isRecurring || 
@@ -246,11 +246,11 @@ export default function ExpenseTrackerApp() {
                   ).map(e => (
                     <li key={e.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
                       <span className="flex flex-col">
-                        <span className="font-medium text-blue-900">{(e.isRecurring || e.note?.includes('recurrente') || e.note?.includes('🔄')) ? '🔄 ' : ''}{e.category}</span>
-                        <span className="text-xs text-blue-700">{new Date(e.date).toLocaleDateString("es-ES")}</span>
-                        <span className="text-sm text-blue-900">{e.note}</span>
+                        <span className="font-medium text-foreground">{(e.isRecurring || e.note?.includes('recurrente') || e.note?.includes('🔄')) ? '🔄 ' : ''}{e.category}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(e.date).toLocaleDateString("es-ES")}</span>
+                        <span className="text-sm text-foreground">{e.note}</span>
                       </span>
-                      <span className="font-semibold text-blue-900">{e.amount.toFixed(2)} €</span>
+                      <span className="font-semibold text-foreground">{e.amount.toFixed(2)} €</span>
                     </li>
                   ))}
                 </ul>
@@ -284,7 +284,7 @@ export default function ExpenseTrackerApp() {
             {/* Modal de formulario de recurrentes */}
             {showRecurringForm && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                <div className="bg-background text-foreground rounded-xl shadow-lg p-6 w-full max-w-md">
+                <div className="bg-background text-foreground rounded-xl shadow-lg p-6 w-full max-w-md mx-3 animate-fade-in">
                   <h3 className="text-lg font-bold mb-4 text-foreground">{editingRecurring ? "Editar Gasto Recurrente" : "Agregar Gasto Recurrente"}</h3>
                   <RecurringExpenseForm
                     categories={categories}
@@ -299,6 +299,7 @@ export default function ExpenseTrackerApp() {
                       setEditingRecurring(null)
                     }}
                     onCancel={() => { setShowRecurringForm(false); setEditingRecurring(null) }}
+                    addCategory={addCategory}
                   />
                 </div>
               </div>

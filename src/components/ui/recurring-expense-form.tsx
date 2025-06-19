@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 const schema = z.object({
   amount: z.string().min(1, "El importe es requerido"),
@@ -19,12 +19,17 @@ export function RecurringExpenseForm({
   initialValues,
   onSubmit,
   onCancel,
+  addCategory,
 }: {
   categories: string[]
   initialValues?: { amount: number; category: string; day: number; note?: string }
   onSubmit: (values: { amount: number; category: string; day: number; note?: string }) => void
   onCancel: () => void
+  addCategory?: (cat: string) => void
 }) {
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCategory, setNewCategory] = useState("")
+  
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: initialValues
@@ -67,7 +72,7 @@ export function RecurringExpenseForm({
           })}
           className="space-y-6"
         >
-
+          
           <FormField
             control={form.control}
             name="amount"
@@ -97,7 +102,17 @@ export function RecurringExpenseForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Categoría</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select
+                  key={categories.length} // Force re-render when categories change
+                  onValueChange={(val) => {
+                    if (val === "__new__") {
+                      setAddingCategory(true)
+                    } else {
+                      field.onChange(val)
+                    }
+                  }}
+                  value={field.value}
+                >
                   <FormControl>
                     <SelectTrigger className="bg-background text-foreground">
                       <SelectValue placeholder="Selecciona una categoría" />
@@ -109,8 +124,58 @@ export function RecurringExpenseForm({
                         {cat}
                       </SelectItem>
                     ))}
+                    <SelectItem value="__new__" className="text-blue-600 font-semibold">
+                      + Nueva categoría
+                    </SelectItem>
                   </SelectContent>
                 </Select>
+                {addingCategory && (
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      autoFocus
+                      placeholder="Nombre de la nueva categoría"
+                      value={newCategory}
+                      onChange={e => setNewCategory(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && newCategory.trim()) {
+                          e.preventDefault()
+                          if (addCategory) addCategory(newCategory.trim())
+                          field.onChange(newCategory.trim())
+                          setAddingCategory(false)
+                          setNewCategory("")
+                        }
+                        if (e.key === 'Escape') {
+                          setAddingCategory(false)
+                          setNewCategory("")
+                        }
+                      }}
+                      className="bg-background text-foreground"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (newCategory.trim()) {
+                          if (addCategory) addCategory(newCategory.trim())
+                          field.onChange(newCategory.trim())
+                          setAddingCategory(false)
+                          setNewCategory("")
+                        }
+                      }}
+                    >
+                      Añadir
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      onClick={() => { 
+                        setAddingCategory(false); 
+                        setNewCategory("") 
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                )}
                 <FormMessage />
               </FormItem>
             )}

@@ -163,6 +163,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
             <FormItem>
               <FormLabel>Categoría</FormLabel>
               <Select
+                key={categories.length} // Force re-render when categories change
                 onValueChange={(val) => {
                   if (val === "__new__") {
                     setAddingCategory(true)
@@ -170,7 +171,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
                     field.onChange(val)
                   }
                 }}
-                defaultValue={field.value}
+                value={field.value}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -197,8 +198,13 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
                     onChange={e => setNewCategory(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && newCategory.trim()) {
+                        e.preventDefault()
                         if (addCategory) addCategory(newCategory.trim())
-                        form.setValue("category", newCategory.trim())
+                        field.onChange(newCategory.trim())
+                        setAddingCategory(false)
+                        setNewCategory("")
+                      }
+                      if (e.key === 'Escape') {
                         setAddingCategory(false)
                         setNewCategory("")
                       }
@@ -209,7 +215,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
                     onClick={() => {
                       if (newCategory.trim()) {
                         if (addCategory) addCategory(newCategory.trim())
-                        form.setValue("category", newCategory.trim())
+                        field.onChange(newCategory.trim())
                         setAddingCategory(false)
                         setNewCategory("")
                       }
