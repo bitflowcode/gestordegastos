@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, createContext, useContext } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 
 interface AuthContextType {
@@ -33,6 +33,13 @@ export function useAuthProvider() {
   const isGuest = !user
 
   useEffect(() => {
+    // Si Supabase no está configurado, establecer como guest
+    if (!isSupabaseConfigured() || !supabase) {
+      setUser(null)
+      setIsLoading(false)
+      return
+    }
+
     // Obtener sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -51,6 +58,10 @@ export function useAuthProvider() {
   }, [])
 
   const signUp = async (email: string, password: string) => {
+    if (!supabase) {
+      return { error: { message: 'Supabase no está configurado' } }
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -59,6 +70,10 @@ export function useAuthProvider() {
   }
 
   const signIn = async (email: string, password: string) => {
+    if (!supabase) {
+      return { error: { message: 'Supabase no está configurado' } }
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -67,12 +82,16 @@ export function useAuthProvider() {
   }
 
   const signOut = async () => {
+    if (!supabase) return
     await supabase.auth.signOut()
   }
 
   const shouldShowUpgradePrompt = () => {
     // No mostrar si ya está autenticado
     if (!isGuest) return false
+
+    // No mostrar si Supabase no está configurado
+    if (!isSupabaseConfigured()) return false
 
     // No mostrar si ya fue descartado recientemente
     const dismissed = localStorage.getItem('upgrade-prompt-dismissed')
@@ -102,8 +121,8 @@ export function useAuthProvider() {
   }
 
   const canUpgrade = () => {
-    // Siempre permitir upgrade para usuarios guest
-    return isGuest
+    // Solo permitir upgrade si Supabase está configurado y es usuario guest
+    return isSupabaseConfigured() && isGuest
   }
 
   return {

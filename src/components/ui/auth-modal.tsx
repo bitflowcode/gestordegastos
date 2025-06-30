@@ -123,6 +123,11 @@ export function AuthModal({ isOpen, onClose, onSignUp, onSignIn, defaultTab = "s
       setError("Por favor ingresa tu email para recuperar la contraseña")
       return
     }
+
+    if (!supabase) {
+      setError("Servicio no disponible temporalmente")
+      return
+    }
     
     setIsLoading(true)
     try {

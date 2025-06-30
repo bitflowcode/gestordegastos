@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { generateUUID } from "@/lib/utils"
-import { supabase } from "@/lib/supabase"
+import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
 
 export interface Expense {
@@ -69,7 +69,7 @@ export function useExpensesHybrid(user: User | null) {
   }
 
   const loadFromSupabase = async () => {
-    if (!user) return
+    if (!user || !supabase) return
 
     try {
       // Cargar gastos
@@ -111,7 +111,7 @@ export function useExpensesHybrid(user: User | null) {
   }
 
   const migrateLocalDataIfNeeded = async () => {
-    if (!user) return
+    if (!user || !supabase) return
 
     // Verificar si ya se migró
     const migrated = localStorage.getItem(MIGRATION_KEY)
@@ -205,7 +205,7 @@ export function useExpensesHybrid(user: User | null) {
     if (isGuest) {
       // Modo guest: actualizar estado y localStorage
       setExpenses(prev => [...prev, newExpense])
-    } else {
+    } else if (supabase) {
       // Modo autenticado: insertar en Supabase
       const { error } = await supabase
         .from('user_expenses')
@@ -233,7 +233,7 @@ export function useExpensesHybrid(user: User | null) {
     if (isGuest) {
       // Modo guest: actualizar estado y localStorage
       setExpenses(prev => prev.filter(expense => expense.id !== id))
-    } else {
+    } else if (supabase) {
       // Modo autenticado: eliminar de Supabase
       const { error } = await supabase
         .from('user_expenses')
@@ -259,7 +259,7 @@ export function useExpensesHybrid(user: User | null) {
           expense.id === id ? { ...expense, ...updatedExpense } : expense
         )
       )
-    } else {
+    } else if (supabase) {
       // Modo autenticado: actualizar en Supabase
       const { error } = await supabase
         .from('user_expenses')
@@ -291,7 +291,7 @@ export function useExpensesHybrid(user: User | null) {
     if (isGuest) {
       // Modo guest: actualizar estado y localStorage
       setCategories(prev => [...prev, category])
-    } else {
+    } else if (supabase) {
       // Modo autenticado: insertar en Supabase
       const { error } = await supabase
         .from('user_categories')
@@ -314,7 +314,7 @@ export function useExpensesHybrid(user: User | null) {
     if (isGuest) {
       // Modo guest: actualizar estado y localStorage
       setCategories(prev => prev.filter(c => c !== category))
-    } else {
+    } else if (supabase) {
       // Modo autenticado: eliminar de Supabase
       const { error } = await supabase
         .from('user_categories')
