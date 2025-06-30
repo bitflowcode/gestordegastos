@@ -5,16 +5,17 @@ import { ExpenseCard } from "@/components/ui/expense-card"
 import { ExpenseForm } from "@/components/ui/expense-form"
 import { ExpenseHistory } from "@/components/ui/expense-history"
 import { SettingsView } from "@/components/ui/settings-view"
-import { useExpenses } from "@/hooks/use-expenses"
-import { Toaster } from "@/components/ui/toaster"
-import { ThemeProvider } from "@/components/theme-provider"
+import { useExpensesHybrid } from "@/hooks/use-expenses-hybrid"
+import { useAuth } from "@/components/auth-provider"
 import { formatDateToString } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { FabAddExpense } from "@/components/ui/fab-add-expense"
-import { ChevronLeft, ChevronRight, Edit, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Edit, Trash2, Cloud, Loader2, User } from "lucide-react"
 import { useRecurringExpenses } from "@/hooks/use-recurring-expenses"
 import { RecurringExpenseForm } from "@/components/ui/recurring-expense-form"
-import type { Expense } from "@/hooks/use-expenses"
+import { UpgradePrompt } from "@/components/ui/upgrade-prompt"
+import { AuthModal } from "@/components/ui/auth-modal"
+import type { Expense } from "@/hooks/use-expenses-hybrid"
 import type { RecurringExpense } from "@/hooks/use-recurring-expenses"
 
 // Lógica para sugerir recurrentes
@@ -37,9 +38,13 @@ function getRecurringSuggestions(expenses: Expense[], recurrings: RecurringExpen
 }
 
 export default function ExpenseTrackerApp() {
+  const { user, isGuest, isLoading: authLoading, signUp, signIn, signOut, shouldShowUpgradePrompt, dismissUpgradePrompt, canUpgrade } = useAuth()
+  
   const {
     expenses,
     categories,
+    isLoading: expensesLoading,
+    isSyncing,
     addExpense,
     deleteExpense,
     updateExpense,
@@ -47,7 +52,7 @@ export default function ExpenseTrackerApp() {
     getTotalByMonth,
     addCategory,
     removeCategory,
-  } = useExpenses()
+  } = useExpensesHybrid(user)
 
   const {
     recurrings,
@@ -154,10 +159,55 @@ export default function ExpenseTrackerApp() {
 
   const suggestions = getRecurringSuggestions(expenses, recurrings)
 
+  // Estados para upgrade y auth
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authModalDefaultTab, setAuthModalDefaultTab] = useState<"login" | "signup">("signup")
+  const [isManualUpgrade, setIsManualUpgrade] = useState(false) // Para diferenciar upgrade manual vs automático
+
+  // Verificar si mostrar upgrade prompt automático
+  useEffect(() => {
+    if (!authLoading && !isManualUpgrade && shouldShowUpgradePrompt()) {
+      setShowUpgradePrompt(true)
+    }
+  }, [authLoading, shouldShowUpgradePrompt, expenses.length, isManualUpgrade]) // También verificar cuando cambie el número de gastos
+
+  if (authLoading || expensesLoading) {
+    return (
+      <div className="container mx-auto p-6 max-w-screen-lg flex items-center justify-center min-h-screen">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Cargando...</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="container mx-auto p-6 max-w-screen-lg">
+    <div className="container mx-auto p-6 max-w-screen-lg">
         <h1 className="text-3xl font-bold mb-6 text-center">Gestor de Gastos</h1>
+
+        {/* Upgrade Prompt - mostrar en el dashboard o por click manual */}
+        {showUpgradePrompt && isGuest && (activeTab === "dashboard" || isManualUpgrade) && (
+          <UpgradePrompt
+            expenseCount={expenses.length}
+            isAutomatic={!isManualUpgrade}
+            onCreateAccount={() => {
+              setShowUpgradePrompt(false)
+              setIsManualUpgrade(false)
+              setAuthModalDefaultTab("signup")
+              setShowAuthModal(true)
+            }}
+            onDismiss={() => {
+              const wasManual = isManualUpgrade
+              setShowUpgradePrompt(false)
+              setIsManualUpgrade(false)
+              if (!wasManual) {
+                dismissUpgradePrompt() // Solo descartar automáticamente si era automático
+              }
+            }}
+          />
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-4">
@@ -321,6 +371,40 @@ export default function ExpenseTrackerApp() {
           </TabsContent>
 
           <TabsContent value="settings">
+            {/* Estado de la cuenta */}
+            {isGuest ? (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-2">Estado de tu cuenta</h3>
+                <p className="text-blue-700 text-sm mb-3">
+                  Estás usando la app sin cuenta. Tus datos se almacenan localmente en este dispositivo.
+                </p>
+                <button
+                  onClick={() => {
+                    setAuthModalDefaultTab("signup")
+                    setShowAuthModal(true)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                >
+                  Crear cuenta para sincronizar
+                </button>
+              </div>
+            ) : (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="font-semibold text-green-900 mb-2">Cuenta sincronizada ✅</h3>
+                <p className="text-green-700 text-sm mb-3">
+                  Email: {user?.email}
+                  <br />
+                  Tus datos se sincronizan automáticamente en todos tus dispositivos.
+                </p>
+                <button
+                  onClick={signOut}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
+
             <SettingsView
               onExportData={handleExportData}
               categories={categories}
@@ -330,9 +414,60 @@ export default function ExpenseTrackerApp() {
           </TabsContent>
         </Tabs>
 
-        <Toaster />
+        {/* Auth Modal */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSignUp={signUp}
+          onSignIn={signIn}
+          defaultTab={authModalDefaultTab}
+        />
+
+        {/* Indicador de sincronización */}
+        {isSyncing && (
+          <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Sincronizando datos...</span>
+          </div>
+        )}
+
+        {/* Botones de acción - responsive */}
+        {canUpgrade() && (
+          <div className="flex justify-center md:justify-end md:fixed md:top-4 md:right-4 mb-4 md:mb-0 gap-2 z-40">
+            <button
+              onClick={() => {
+                setAuthModalDefaultTab("login")
+                setShowAuthModal(true)
+              }}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg shadow-lg flex items-center gap-2 text-xs md:text-sm font-medium transition-colors"
+            >
+              <User className="h-3 w-3 md:h-4 md:w-4" />
+              <span>Iniciar Sesión</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setIsManualUpgrade(true)
+                setShowUpgradePrompt(true)
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg shadow-lg flex items-center gap-2 text-xs md:text-sm font-medium transition-colors"
+            >
+              <Cloud className="h-3 w-3 md:h-4 md:w-4" />
+              <span>Upgrade</span>
+            </button>
+          </div>
+        )}
+
+        {/* Indicador de usuario autenticado */}
+        {!isGuest && (
+          <div className="flex justify-center md:justify-end md:fixed md:top-4 md:right-4 mb-4 md:mb-0">
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs flex items-center gap-1">
+              <Cloud className="h-3 w-3" />
+              <span>Sincronizado</span>
+            </div>
+          </div>
+        )}
       </div>
-    </ThemeProvider>
   )
 }
 

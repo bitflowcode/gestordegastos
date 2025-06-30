@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { ClientWrapper } from "@/components/client-wrapper"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -28,7 +29,11 @@ export default function RootLayout({
         <link rel="icon" href="/icon-192.png" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <ClientWrapper>
+          {children}
+        </ClientWrapper>
+      </body>
     </html>
   )
 }
