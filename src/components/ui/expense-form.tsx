@@ -296,9 +296,11 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
                       onSelect={(date) => {
                         field.onChange(date)
                         // Cerrar el popover después de seleccionar fecha
-                        const popoverTrigger = document.querySelector('[aria-expanded="true"]') as HTMLButtonElement
-                        if (popoverTrigger) {
-                          popoverTrigger.click()
+                        if (typeof window !== 'undefined') {
+                          const popoverTrigger = document.querySelector('[aria-expanded="true"]') as HTMLButtonElement
+                          if (popoverTrigger) {
+                            popoverTrigger.click()
+                          }
                         }
                       }}
                       initialFocus

@@ -106,6 +106,7 @@ export function AutomationTemplates() {
     const dataStr = JSON.stringify(workflowData, null, 2)
     const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(dataStr)
     
+    if (typeof window === 'undefined') return
     const link = document.createElement("a")
     link.href = dataUri
     link.download = `${template.id}-workflow.json`

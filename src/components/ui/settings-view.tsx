@@ -49,30 +49,32 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
 
   return (
     <Tabs defaultValue="general" className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="general">General</TabsTrigger>
-        <TabsTrigger value="automation">
-          <Zap className="h-4 w-4 mr-2" />
-          Automatización
+      <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsTrigger value="general" className="text-sm font-medium">General</TabsTrigger>
+        <TabsTrigger value="automation" className="text-sm font-medium">
+          <Zap className="h-4 w-4 mr-1" />
+          <span className="hidden sm:inline">Automatización</span>
+          <span className="sm:hidden">Auto</span>
         </TabsTrigger>
-        <TabsTrigger value="processing">
-          <Download className="h-4 w-4 mr-2" />
-          Procesamiento
+        <TabsTrigger value="processing" className="text-sm font-medium">
+          <Download className="h-4 w-4 mr-1" />
+          <span className="hidden sm:inline">Procesamiento</span>
+          <span className="sm:hidden">Proc</span>
         </TabsTrigger>
-        <TabsTrigger value="data">Datos</TabsTrigger>
+        <TabsTrigger value="data" className="text-sm font-medium">Datos</TabsTrigger>
       </TabsList>
 
       <TabsContent value="general" className="space-y-6 mt-6">
         <Card>
           <CardHeader>
             <CardTitle>Apariencia</CardTitle>
-            <CardDescription>Personaliza el aspecto visual de la aplicación</CardDescription>
+            <CardDescription className="text-base md:text-sm">Personaliza el aspecto visual de la aplicación</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium mb-1">Tema</h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-base md:text-sm text-muted-foreground">
                   Selecciona entre tema claro, oscuro o el predeterminado del sistema
                 </p>
               </div>
@@ -84,7 +86,7 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
         <Card>
           <CardHeader>
             <CardTitle>Categorías de Gastos</CardTitle>
-            <CardDescription>Gestiona las categorías disponibles para clasificar tus gastos</CardDescription>
+            <CardDescription className="text-base md:text-sm">Gestiona las categorías disponibles para clasificar tus gastos</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2 mb-4">
@@ -129,13 +131,13 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
         <Card>
           <CardHeader>
             <CardTitle>Gestión de Datos</CardTitle>
-            <CardDescription>Realiza copias de seguridad de tus datos y restaura información anterior</CardDescription>
+            <CardDescription className="text-base md:text-sm">Realiza copias de seguridad de tus datos y restaura información anterior</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="rounded-lg border p-4 space-y-4">
               <div>
                 <h4 className="font-medium mb-2">Copia de Seguridad</h4>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-base md:text-sm text-muted-foreground mb-4">
                   Descarga todos tus datos (gastos y categorías) en formato JSON. Este archivo te permitirá restaurar toda
                   tu información en caso de cambiar de dispositivo o si necesitas recuperar tus datos.
                 </p>
@@ -147,7 +149,7 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
 
               <div>
                 <h4 className="font-medium mb-2">Restaurar Datos</h4>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-base md:text-sm text-muted-foreground mb-4">
                   Restaura una copia de seguridad previa seleccionando el archivo JSON que descargaste anteriormente.
                 </p>
                 <Input
@@ -180,7 +182,7 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-base md:text-sm">
               Esta acción no se puede deshacer. Los gastos asociados a esta categoría se mantendrán pero no podrás
               seleccionar esta categoría para nuevos gastos.
             </AlertDialogDescription>

@@ -86,6 +86,8 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
   const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0)
 
   const handleExportCSV = () => {
+    if (typeof window === 'undefined') return
+    
     const headers = ["Fecha", "Categoría", "Importe", "Nota"]
     const csvContent = [
       headers.join(","),
@@ -146,6 +148,8 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
   }
 
   const handlePrint = () => {
+    if (typeof window === 'undefined') return
+    
     const printContent = document.createElement("div")
     const title =
       selectedMonth === "all"

@@ -176,7 +176,8 @@ export function AutomaticReports() {
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     // Crear PDF de muestra
-    const element = document.createElement('a')
+          if (typeof window === 'undefined') return
+      const element = document.createElement('a')
     element.href = 'data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsO...' // PDF base64 mockup
     element.download = `preview-reporte-${configId}.pdf`
     element.click()

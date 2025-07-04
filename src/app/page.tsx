@@ -1,5 +1,8 @@
 "use client"
 
+// Forzar renderización dinámica para evitar errores de precompilación
+export const dynamic = 'force-dynamic'
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExpenseCard } from "@/components/ui/expense-card"
 import { ExpenseForm } from "@/components/ui/expense-form"
@@ -116,6 +119,9 @@ export default function ExpenseTrackerApp() {
   }
 
   const handleExportData = () => {
+    // Solo ejecutar en el cliente
+    if (typeof window === 'undefined') return
+    
     const dataStr = JSON.stringify(expenses, null, 2)
     const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(dataStr)
     const exportFileDefaultName = "expense_data.json"
