@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { generateUUID } from '@/lib/utils'
 
 // Interfaz para los datos que enviará n8n
 interface N8nExpenseData {
@@ -45,14 +44,12 @@ export async function POST(request: NextRequest) {
     
     // Crear el gasto en Supabase
     const newExpense = {
-      id: generateUUID(),
       user_id: data.userId,
       amount: data.amount,
       category: category,
       date: expenseDate,
       note: buildNote(data),
-      is_recurring: false,
-      created_at: new Date().toISOString()
+      is_recurring: false
     }
 
     if (!supabase) {
