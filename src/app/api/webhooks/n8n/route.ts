@@ -52,14 +52,7 @@ export async function POST(request: NextRequest) {
       date: expenseDate,
       note: buildNote(data),
       is_recurring: false,
-      created_at: new Date().toISOString(),
-      // Metadatos adicionales para tracking
-      metadata: {
-        source: data.source,
-        confidence: data.confidence,
-        processed_by: 'n8n',
-        original_data: data.originalData
-      }
+      created_at: new Date().toISOString()
     }
 
     if (!supabase) {
