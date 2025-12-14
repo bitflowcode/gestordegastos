@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+// Crear cliente de Supabase con Service Role Key para bypasear RLS
+const getSupabaseAdmin = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return null
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
 
 // Interfaz para los datos que enviará n8n
 interface N8nExpenseData {
@@ -9,7 +26,7 @@ interface N8nExpenseData {
   note?: string
   merchant?: string
   confidence?: number
-  source: 'email' | 'folder' | 'manual'
+  source?: string
   originalData?: any
   userId: string
   apiKey: string // Para autenticación
@@ -52,14 +69,16 @@ export async function POST(request: NextRequest) {
       is_recurring: false
     }
 
-    if (!supabase) {
+    const supabaseAdmin = getSupabaseAdmin()
+    
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        { error: 'Database not configured' }, 
+        { error: 'Database not configured. Missing SUPABASE_SERVICE_ROLE_KEY' }, 
         { status: 500 }
       )
     }
 
-    const { data: insertedExpense, error } = await supabase
+    const { data: insertedExpense, error } = await supabaseAdmin
       .from('user_expenses')
       .insert(newExpense)
       .select()
@@ -133,13 +152,15 @@ function buildNote(data: N8nExpenseData): string {
   }
   
   // Agregar indicador de origen automático
-  const sourceIndicators = {
+  const sourceIndicators: Record<string, string> = {
     'email': '📧 Auto-importado desde email',
     'folder': '📁 Auto-importado desde carpeta',
-    'manual': '🤖 Procesado automáticamente'
+    'manual': '🤖 Procesado automáticamente',
+    'n8n-test': '🧪 Prueba desde n8n'
   }
   
-  note += ` (${sourceIndicators[data.source]})`
+  const sourceLabel = sourceIndicators[data.source || 'manual'] || '🔄 Importado automáticamente'
+  note += ` (${sourceLabel})`
   
   return note
 }
