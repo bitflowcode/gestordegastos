@@ -22,18 +22,18 @@ const templates: Template[] = [
   {
     id: "gmail-basic",
     name: "Auto-importar desde Gmail",
-    description: "Importa automáticamente facturas que lleguen a tu Gmail con archivos PDF adjuntos.",
+    description: "Importa automáticamente facturas que lleguen a tu Gmail con archivos PDF adjuntos",
     difficulty: "Fácil",
     icon: <Mail className="h-6 w-6 text-blue-600" />,
     estimatedTime: "15 minutos",
     requirements: [
       "Cuenta de Gmail",
-      "n8n (Cloud o self-hosted)",
-      "Facturas que lleguen por email (PDF adjunto)"
+      "n8n Cloud (gratis hasta 5000 ejecuciones/mes)",
+      "Facturas que lleguen por email"
     ],
     benefits: [
       "Nunca más olvides registrar una factura",
-      "El gasto se crea automáticamente en segundos",
+      "Procesamiento automático en segundos",
       "Categorización inteligente",
       "Funciona 24/7"
     ],
@@ -42,18 +42,18 @@ const templates: Template[] = [
   {
     id: "dropbox-monitor",
     name: "Monitorear Carpeta de Facturas",
-    description: "Vigila una carpeta en Google Drive/Dropbox y procesa automáticamente nuevos PDFs.",
+    description: "Vigila una carpeta en Dropbox/Google Drive y procesa automáticamente nuevos archivos",
     difficulty: "Fácil", 
     icon: <Folder className="h-6 w-6 text-green-600" />,
     estimatedTime: "20 minutos",
     requirements: [
-      "Cuenta de Google Drive o Dropbox",
-      "n8n (Cloud o self-hosted)",
-      "Carpeta dedicada para facturas (PDF)"
+      "Cuenta de Dropbox o Google Drive",
+      "n8n Cloud",
+      "Carpeta dedicada para facturas"
     ],
     benefits: [
-      "Arrastra y suelta facturas en una carpeta",
-      "Importación automática sin abrir la app",
+      "Arrastra y suelta facturas",
+      "Procesamiento automático",
       "Backup en la nube",
       "Acceso desde móvil"
     ],
@@ -62,19 +62,19 @@ const templates: Template[] = [
   {
     id: "email-forwarding",
     name: "Reenvío de Facturas",
-    description: "Reenvía facturas a una dirección especial para procesarlas automáticamente.",
+    description: "Reenvía facturas a una dirección especial para procesamiento automático",
     difficulty: "Intermedio",
     icon: <Mail className="h-6 w-6 text-purple-600" />,
     estimatedTime: "30 minutos", 
     requirements: [
-      "n8n (Cloud o self-hosted)",
-      "Cuenta OpenAI (coste según uso)",
-      "Configurar filtros/reglas de email"
+      "n8n Cloud",
+      "Cuenta OpenAI (€5-10/mes)",
+      "Configurar filtros de email"
     ],
     benefits: [
-      "Funciona con cualquier proveedor de email",
-      "Procesamiento preciso con IA",
-      "No necesitas cambiar hábitos",
+      "Funciona con cualquier email",
+      "Procesamiento muy preciso con IA",
+      "No necesita cambiar hábitos",
       "Extracción inteligente de datos"
     ],
     downloadUrl: "/templates/email-forwarding.json"
@@ -123,7 +123,7 @@ export function AutomationTemplates() {
             Templates de Automatización
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Configuraciones pre-hechas para empezar rápidamente. Descarga un template, impórtalo en n8n y conecta tu cuenta con tu API Key. Nota: Para usar automatizaciones necesitas una cuenta (para generar tu API Key y asociar los gastos a tu perfil).
+            Configuraciones pre-hechas para empezar rápidamente. Solo descargar, importar en n8n y personalizar.
           </p>
         </CardHeader>
       </Card>
@@ -212,7 +212,7 @@ export function AutomationTemplates() {
                 </li>
                 <li className="flex gap-2">
                   <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">2</span>
-                  <span>Acceder a tu instancia de n8n en <a href="https://n8n.gastoguru.com" target="_blank" className="underline">n8n.gastoguru.com</a></span>
+                  <span>Crear cuenta gratuita en <a href="https://n8n.cloud" target="_blank" className="underline">n8n.cloud</a></span>
                 </li>
                 <li className="flex gap-2">
                   <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">3</span>
@@ -220,20 +220,20 @@ export function AutomationTemplates() {
                 </li>
                 <li className="flex gap-2">
                   <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">4</span>
-                  <span>Copiar tu Webhook URL y tu API Key desde la pestaña "Configuración de API"</span>
+                  <span>Copiar tu API key desde la pestaña "Configuración de API"</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">5</span>
-                  <span>Pegar la Webhook URL y la API Key en el workflow, guardarlo y activarlo</span>
+                  <span>Pegar la API key en el workflow y activarlo</span>
                 </li>
               </ol>
             </div>
 
             <div className="flex gap-2">
               <Button asChild>
-                <a href="https://n8n.gastoguru.com" target="_blank">
+                <a href="https://n8n.cloud" target="_blank">
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  Ir a n8n
+                  Ir a n8n.cloud
                 </a>
               </Button>
               <Button variant="outline" asChild>

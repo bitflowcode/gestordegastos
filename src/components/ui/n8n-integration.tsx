@@ -38,7 +38,7 @@ export function N8nIntegration() {
     }
   }
 
-      const webhookUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/n8n` : 'https://tu-dominio.com/api/webhooks/n8n'
+      const webhookUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/n8n` : 'https://gastoguru.com/api/webhooks/n8n'
 
   const examplePayload = {
     amount: 25.50,
