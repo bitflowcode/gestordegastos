@@ -57,9 +57,13 @@ const nextConfig = withPWA({
     
     return config
   },
-  // Configuración experimental para mejor compatibilidad
-  experimental: {
-    esmExternals: 'loose'
+  // Configuración para Turbopack (Next.js 16+)
+  turbopack: {
+    root: __dirname,
+    resolveAlias: {
+      canvas: './empty-module.js',
+      fs: './empty-module.js',
+    },
   },
 })
 
