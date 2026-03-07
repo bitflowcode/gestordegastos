@@ -111,9 +111,28 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file && (file.type.startsWith("image/") || file.type === "application/pdf")) {
-      onImageCapture(file)
+    if (!file) return
+
+    // Validar tipo de archivo
+    const isImage = file.type.startsWith("image/")
+    const isPdf = file.type === "application/pdf"
+    
+    if (!isImage && !isPdf) {
+      alert("Por favor, sube una imagen (JPG, PNG, WebP) o un PDF")
+      return
     }
+
+    // Validar tamaño (máximo 10MB)
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    if (file.size > maxSize) {
+      alert(`El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo permitido: 10MB`)
+      return
+    }
+
+    onImageCapture(file)
+    
+    // Limpiar input para permitir subir el mismo archivo de nuevo
+    event.target.value = ''
   }, [onImageCapture])
 
   return (
@@ -207,7 +226,8 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
             <li>Asegúrate de que el recibo esté bien iluminado</li>
             <li>Mantén el recibo plano y sin arrugas</li>
             <li>Coloca todo el recibo dentro del marco</li>
-            <li>Soporta JPG, PNG, WebP (PDF con limitaciones)</li>
+            <li>Soporta JPG, PNG, WebP y PDF (máx. 10MB)</li>
+            <li>Para PDFs: la primera vez puede tardar ~30seg descargando modelos</li>
           </ul>
         </div>
       </CardContent>

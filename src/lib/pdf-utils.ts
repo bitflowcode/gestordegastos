@@ -4,21 +4,8 @@ import * as pdfjsLib from 'pdfjs-dist'
 
 // Configuración del worker para PDF.js
 if (typeof window !== 'undefined') {
-  // En producción, usar CDN con la misma versión que el paquete instalado
-  if (process.env.NODE_ENV === 'production') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.mjs'
-  } else {
-    // En desarrollo, intentar usar el worker local, con fallback a CDN
-    try {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.mjs',
-        import.meta.url
-      ).toString()
-    } catch (error) {
-      console.warn('No se pudo cargar worker local, usando CDN')
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.mjs'
-    }
-  }
+  // Usar CDN con la versión instalada (más confiable)
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
 }
 
 export interface PdfToImageOptions {
@@ -55,18 +42,35 @@ export async function convertPdfToImageWithDataUrl(
     throw new Error('PDF processing is only available on the client side')
   }
 
+  // Validar tamaño del archivo (máximo 10MB)
+  const maxSize = 10 * 1024 * 1024 // 10MB
+  if (pdfFile.size > maxSize) {
+    throw new Error(`El PDF es demasiado grande (${(pdfFile.size / 1024 / 1024).toFixed(1)}MB). Máximo: 10MB`)
+  }
+
   const {
     pageNumber = 1,
     scale = 2.0,
     format = 'image/jpeg',
-    quality = 0.8
+    quality = 0.85
   } = options
 
   try {
     const arrayBuffer = await pdfFile.arrayBuffer()
     
-    // Cargar PDF con configuración básica
-    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
+    // Cargar PDF con configuración optimizada y timeout
+    const loadingTask = pdfjsLib.getDocument({
+      data: arrayBuffer,
+      useSystemFonts: true,
+      disableFontFace: false,
+    })
+    
+    const pdf = await Promise.race([
+      loadingTask.promise,
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout: El PDF tardó demasiado en cargar')), 30000)
+      )
+    ])
     
     if (pageNumber > pdf.numPages) {
       throw new Error(`La página ${pageNumber} no existe. El PDF tiene ${pdf.numPages} páginas.`)
@@ -75,22 +79,38 @@ export async function convertPdfToImageWithDataUrl(
     const page = await pdf.getPage(pageNumber)
     const viewport = page.getViewport({ scale })
     
+    // Limitar resolución máxima para evitar problemas de memoria
+    const maxDimension = 4000
+    let finalScale = scale
+    if (viewport.width > maxDimension || viewport.height > maxDimension) {
+      finalScale = Math.min(maxDimension / viewport.width, maxDimension / viewport.height) * scale
+    }
+    
+    const finalViewport = page.getViewport({ scale: finalScale })
+    
     const canvas = document.createElement('canvas')
-    const context = canvas.getContext('2d')
+    const context = canvas.getContext('2d', { alpha: false })
     
     if (!context) {
       throw new Error('No se pudo crear el contexto del canvas')
     }
     
-    canvas.width = viewport.width
-    canvas.height = viewport.height
+    canvas.width = finalViewport.width
+    canvas.height = finalViewport.height
+    
+    // Fondo blanco para mejor OCR
+    context.fillStyle = 'white'
+    context.fillRect(0, 0, canvas.width, canvas.height)
     
     const renderContext = {
       canvasContext: context,
-      viewport: viewport,
+      viewport: finalViewport,
     }
     
     await page.render(renderContext).promise
+    
+    // Limpiar recursos
+    page.cleanup()
     
     // Obtener data URL del canvas
     const dataUrl = canvas.toDataURL(format, quality)

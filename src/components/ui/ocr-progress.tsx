@@ -91,8 +91,17 @@ export function OCRProgress({ status, progress, error }: OCRProgressProps) {
 
         {progress > 0 && progress < 100 && (
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>💡 Esto puede tomar unos segundos...</p>
-            <p>El procesamiento se realiza localmente en tu dispositivo.</p>
+            {status.includes('Descargando modelos') ? (
+              <>
+                <p>💡 Primera vez: Descargando modelos de idioma (~30MB)</p>
+                <p>Esto solo ocurre una vez, luego será mucho más rápido.</p>
+              </>
+            ) : (
+              <>
+                <p>💡 Esto puede tomar unos segundos...</p>
+                <p>El procesamiento se realiza localmente en tu dispositivo.</p>
+              </>
+            )}
           </div>
         )}
       </CardContent>

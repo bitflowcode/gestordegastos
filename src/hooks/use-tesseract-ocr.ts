@@ -1,8 +1,13 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import Tesseract from "tesseract.js"
 import { convertPdfToImageWithDataUrl, isPdfFile } from "@/lib/pdf-utils"
+
+// Importación dinámica de Tesseract para evitar problemas con Turbopack
+const getTesseract = async () => {
+  const { default: Tesseract } = await import("tesseract.js")
+  return Tesseract
+}
 
 interface ScannedData {
   amount?: number
@@ -218,6 +223,12 @@ export function useTesseractOCR() {
       let imageFile = inputFile
       let imageDataUrl: string | undefined
 
+      // Validar tamaño del archivo (máximo 10MB)
+      const maxSize = 10 * 1024 * 1024 // 10MB
+      if (inputFile.size > maxSize) {
+        throw new Error(`El archivo es demasiado grande (${(inputFile.size / 1024 / 1024).toFixed(1)}MB). Máximo permitido: 10MB`)
+      }
+
       // Si es un PDF, convertirlo a imagen primero
       if (isPdfFile(inputFile)) {
         setProgress({ status: "Convirtiendo PDF a imagen...", progress: 10 })
@@ -239,24 +250,44 @@ export function useTesseractOCR() {
         imageDataUrl = undefined
       }
 
+      // Cargar Tesseract dinámicamente
+      setProgress({ status: "Cargando motor de OCR...", progress: isPdfFile(inputFile) ? 20 : 5 })
+      const Tesseract = await getTesseract()
+      
       const result = await Tesseract.recognize(
         imageFile,
         "spa+eng", // Español e inglés
         {
           logger: (m) => {
+            // Mensajes más descriptivos según el estado
+            let statusText = m.status || "Procesando..."
+            
+            if (m.status === "loading tesseract core") {
+              statusText = "Cargando motor de OCR..."
+            } else if (m.status === "initializing tesseract") {
+              statusText = "Inicializando OCR..."
+            } else if (m.status === "loading language traineddata") {
+              statusText = "Descargando modelos de idioma (primera vez, ~30MB)..."
+            } else if (m.status === "initializing api") {
+              statusText = "Preparando análisis..."
+            } else if (m.status === "recognizing text") {
+              statusText = "Reconociendo texto del recibo..."
+            }
+            
             if (m.status === "recognizing text") {
               // Ajustar progreso si venimos de PDF (20-90% para OCR)
               const baseProgress = isPdfFile(inputFile) ? 20 : 0
               const ocrProgress = Math.round(m.progress * (isPdfFile(inputFile) ? 70 : 100))
               setProgress({
-                status: "Reconociendo texto...",
+                status: statusText,
                 progress: baseProgress + ocrProgress
               })
             } else {
               const baseProgress = isPdfFile(inputFile) ? 20 : 0
+              const currentProgress = baseProgress + Math.round(m.progress * (isPdfFile(inputFile) ? 70 : 100))
               setProgress({
-                status: m.status || "Procesando...",
-                progress: baseProgress + Math.round(m.progress * (isPdfFile(inputFile) ? 70 : 100))
+                status: statusText,
+                progress: Math.min(currentProgress, 95)
               })
             }
           },
@@ -266,14 +297,14 @@ export function useTesseractOCR() {
         }
       )
 
-      setProgress({ status: "Extrayendo datos...", progress: 90 })
+      setProgress({ status: "Extrayendo datos...", progress: 95 })
 
       const extractedData = extractDataFromText(result.data.text)
       
       // Agregar la data URL al resultado
       extractedData.imageDataUrl = imageDataUrl
       
-      setProgress({ status: "Completado", progress: 100 })
+      setProgress({ status: "¡Completado!", progress: 100 })
       
       return extractedData
     } catch (err) {
