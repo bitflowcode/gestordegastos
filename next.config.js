@@ -1,47 +1,13 @@
-const withPWA = require('next-pwa')({
-  dest: 'public',
+const withSerwist = require('@serwist/next').default({
+  swSrc: 'src/sw.ts',
+  swDest: 'public/sw.js',
   disable: process.env.NODE_ENV === 'development',
   register: true,
-  skipWaiting: true,
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'google-fonts',
-        expiration: {
-          maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 año
-        }
-      }
-    },
-    {
-      urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'google-fonts-stylesheets',
-        expiration: {
-          maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 año
-        }
-      }
-    },
-    {
-      urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'images',
-        expiration: {
-          maxEntries: 64,
-          maxAgeSeconds: 30 * 24 * 60 * 60 // 30 días
-        }
-      }
-    }
-  ]
+  reloadOnOnline: true,
 })
 
 /** @type {import('next').NextConfig} */
-const nextConfig = withPWA({
+const nextConfig = withSerwist({
   reactStrictMode: true,
   output: 'standalone',
   trailingSlash: true,
