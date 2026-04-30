@@ -416,6 +416,7 @@ export default function ExpenseTrackerApp() {
               categories={categories}
               onAddCategory={addCategory}
               onRemoveCategory={removeCategory}
+              userId={user?.id ?? ""}
             />
           </TabsContent>
         </Tabs>

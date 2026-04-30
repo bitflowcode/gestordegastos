@@ -19,6 +19,7 @@ import {
 import { ThemeToggle } from "./theme-toggle"
 import { N8nIntegration } from "./n8n-integration"
 import { AutomationTemplates } from "./automation-templates"
+import { GmailIntegration } from "./gmail-integration"
 import { AutomaticReports } from "./automatic-reports"
 import { BatchProcessor } from "./batch-processor"
 
@@ -27,9 +28,10 @@ interface SettingsViewProps {
   onAddCategory: (category: string) => void
   onRemoveCategory: (category: string) => void
   onExportData: () => void
+  userId: string
 }
 
-export function SettingsView({ categories, onAddCategory, onRemoveCategory, onExportData }: SettingsViewProps) {
+export function SettingsView({ categories, onAddCategory, onRemoveCategory, onExportData, userId }: SettingsViewProps) {
   const [newCategory, setNewCategory] = useState("")
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
 
@@ -115,7 +117,8 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
         </Card>
       </TabsContent>
 
-      <TabsContent value="automation" className="mt-6">
+      <TabsContent value="automation" className="mt-6 space-y-6">
+        <GmailIntegration userId={userId} />
         <AutomationTemplates />
         <N8nIntegration />
       </TabsContent>
