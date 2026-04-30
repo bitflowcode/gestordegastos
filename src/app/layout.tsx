@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import Link from "next/link"
 import { ClientWrapper } from "@/components/client-wrapper"
 import "./globals.css"
 
@@ -53,10 +54,17 @@ export default function RootLayout({
         <link rel="icon" href="/icon-512.png" sizes="512x512" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} flex flex-col min-h-screen`}>
         <ClientWrapper>
           {children}
         </ClientWrapper>
+        <footer className="mt-auto py-4 px-6 border-t border-border bg-background">
+          <div className="max-w-3xl mx-auto text-center text-xs text-muted-foreground">
+            <Link href="/privacy" className="hover:text-foreground underline underline-offset-2 transition-colors">
+              Política de Privacidad
+            </Link>
+          </div>
+        </footer>
       </body>
     </html>
   )
