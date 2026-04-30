@@ -34,6 +34,7 @@ interface SettingsViewProps {
 export function SettingsView({ categories, onAddCategory, onRemoveCategory, onExportData, userId }: SettingsViewProps) {
   const [newCategory, setNewCategory] = useState("")
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("general")
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
@@ -50,7 +51,7 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
   }
 
   return (
-    <Tabs defaultValue="general" className="w-full">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
         <TabsTrigger value="general" className="text-sm font-medium">General</TabsTrigger>
         <TabsTrigger value="automation" className="text-sm font-medium">

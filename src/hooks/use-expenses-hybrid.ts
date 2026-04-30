@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { generateUUID } from "@/lib/utils"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
@@ -26,15 +26,24 @@ export function useExpensesHybrid(user: User | null) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
 
+  // Rastrea el userId previo para distinguir carga inicial de refrescos de token
+  const prevUserIdRef = useRef<string | null | undefined>(undefined)
+
   const isGuest = !user
 
-  // Cargar datos al inicializar
+  // Cargar datos al inicializar o cuando cambia la identidad del usuario
   useEffect(() => {
-    loadData()
+    const isFirstLoad = prevUserIdRef.current === undefined
+    const userIdChanged = prevUserIdRef.current !== (user?.id ?? null)
+    prevUserIdRef.current = user?.id ?? null
+
+    // Solo mostrar pantalla de carga en la primera carga o si el usuario cambia.
+    // Si es un refresco de token (mismo userId), sincronizar en segundo plano.
+    loadData(isFirstLoad || userIdChanged)
   }, [user])
 
-  const loadData = async () => {
-    setIsLoading(true)
+  const loadData = async (showLoadingSpinner = true) => {
+    if (showLoadingSpinner) setIsLoading(true)
     try {
       if (isGuest) {
         // Modo guest: usar localStorage
