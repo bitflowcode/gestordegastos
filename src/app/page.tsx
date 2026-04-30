@@ -191,7 +191,7 @@ export default function ExpenseTrackerApp() {
 
   return (
     <div className="container mx-auto p-6 max-w-screen-lg">
-        <h1 className="text-3xl font-bold mb-6 text-center">Gestor de Gastos</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">GastoGuru</h1>
 
         {/* Upgrade Prompt - mostrar en el dashboard o por click manual */}
         {showUpgradePrompt && isGuest && (activeTab === "dashboard" || isManualUpgrade) && (

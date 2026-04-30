@@ -8,10 +8,10 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Gestor de Gastos - Expense Tracker",
+  title: "GastoGuru",
   description: "Aplicación avanzada para gestión financiera personal con automatización inteligente, OCR de recibos e informes automáticos.",
-  applicationName: "Gestor de Gastos",
-  authors: [{ name: "Expense Tracker Team" }],
+  applicationName: "GastoGuru",
+  authors: [{ name: "GastoGuru Team" }],
   keywords: ["gastos", "finanzas", "presupuesto", "dinero", "expense tracker", "OCR", "automatización"],
   icons: [
     { rel: "icon", url: "/favicon.ico", sizes: "32x32" },
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Gestor Gastos",
+    title: "GastoGuru",
   },
 }
 
@@ -47,7 +47,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#2563eb" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Gestor Gastos" />
+        <meta name="apple-mobile-web-app-title" content="GastoGuru" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.ico" sizes="32x32" />
         <link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />

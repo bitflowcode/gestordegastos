@@ -1,6 +1,6 @@
 {
-  "name": "Gestor de Gastos - Expense Tracker",
-  "short_name": "Gestor Gastos",
+  "name": "GastoGuru",
+  "short_name": "GastoGuru",
   "description": "Aplicación avanzada para gestión financiera personal con automatización inteligente, OCR de recibos e informes automáticos.",
   "start_url": "/",
   "display": "standalone",
