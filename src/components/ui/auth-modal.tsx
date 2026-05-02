@@ -131,8 +131,10 @@ export function AuthModal({ isOpen, onClose, onSignUp, onSignIn, defaultTab = "s
     
     setIsLoading(true)
     try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : '')
       const { error } = await supabase.auth.resetPasswordForEmail(loginEmail, {
-        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : '',
+        redirectTo: `${siteUrl}/reset-password`,
       })
       
       if (error) {

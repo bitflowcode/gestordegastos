@@ -3,9 +3,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState } from "react"
-import { Download, Plus, Trash2, Zap } from "lucide-react"
+import { Download, Plus, Trash2, Zap, AlertCircle, CheckCircle2, Loader2, Lock, User } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ import { AutomationTemplates } from "./automation-templates"
 import { GmailIntegration } from "./gmail-integration"
 import { AutomaticReports } from "./automatic-reports"
 import { BatchProcessor } from "./batch-processor"
+import { supabase } from "@/lib/supabase"
 
 interface SettingsViewProps {
   categories: string[]
@@ -29,12 +31,60 @@ interface SettingsViewProps {
   onRemoveCategory: (category: string) => void
   onExportData: () => void
   userId: string
+  userEmail?: string
 }
 
-export function SettingsView({ categories, onAddCategory, onRemoveCategory, onExportData, userId }: SettingsViewProps) {
+export function SettingsView({ categories, onAddCategory, onRemoveCategory, onExportData, userId, userEmail }: SettingsViewProps) {
   const [newCategory, setNewCategory] = useState("")
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("general")
+
+  // Estados para cambio de contraseña
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError(null)
+    setPasswordSuccess(false)
+
+    if (!newPassword || !confirmPassword) {
+      setPasswordError("Por favor completa todos los campos")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Las contraseñas no coinciden")
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordError("La contraseña debe tener al menos 6 caracteres")
+      return
+    }
+    if (!supabase) {
+      setPasswordError("Servicio no disponible temporalmente")
+      return
+    }
+
+    setPasswordLoading(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) {
+        setPasswordError(error.message)
+      } else {
+        setPasswordSuccess(true)
+        setNewPassword("")
+        setConfirmPassword("")
+        setTimeout(() => setPasswordSuccess(false), 5000)
+      }
+    } catch {
+      setPasswordError("Error inesperado. Inténtalo de nuevo.")
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
@@ -52,8 +102,12 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+      <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
         <TabsTrigger value="general" className="text-sm font-medium">General</TabsTrigger>
+        <TabsTrigger value="account" className="text-sm font-medium">
+          <User className="h-4 w-4 mr-1" />
+          <span className="hidden sm:inline">Cuenta</span>
+        </TabsTrigger>
         <TabsTrigger value="automation" className="text-sm font-medium">
           <Zap className="h-4 w-4 mr-1" />
           <span className="hidden sm:inline">Automatización</span>
@@ -113,6 +167,99 @@ export function SettingsView({ categories, onAddCategory, onRemoveCategory, onEx
                   </Button>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="account" className="space-y-6 mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-blue-600" />
+              Información de la Cuenta
+            </CardTitle>
+            <CardDescription className="text-base md:text-sm">
+              Gestiona los datos de acceso a tu cuenta
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {userEmail && (
+              <div className="space-y-2">
+                <Label>Correo electrónico</Label>
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                  <span className="text-sm text-muted-foreground flex-1">{userEmail}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  El email no se puede cambiar desde aquí. Contacta con soporte si necesitas modificarlo.
+                </p>
+              </div>
+            )}
+
+            <div className="border-t pt-6">
+              <h4 className="font-medium mb-1">Cambiar Contraseña</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Introduce una nueva contraseña para tu cuenta. Debe tener al menos 6 caracteres.
+              </p>
+
+              {passwordSuccess ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                  <p className="text-sm text-green-800">¡Contraseña actualizada correctamente!</p>
+                </div>
+              ) : (
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Nueva contraseña</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="new-password"
+                        type="password"
+                        placeholder="Mínimo 6 caracteres"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="pl-9"
+                        disabled={passwordLoading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-new-password">Confirmar nueva contraseña</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirm-new-password"
+                        type="password"
+                        placeholder="Repite tu nueva contraseña"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="pl-9"
+                        disabled={passwordLoading}
+                      />
+                    </div>
+                  </div>
+
+                  {passwordError && (
+                    <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                      <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                      <p className="text-sm text-red-800">{passwordError}</p>
+                    </div>
+                  )}
+
+                  <Button type="submit" disabled={passwordLoading} className="w-full sm:w-auto">
+                    {passwordLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Actualizando...
+                      </>
+                    ) : (
+                      "Cambiar Contraseña"
+                    )}
+                  </Button>
+                </form>
+              )}
             </div>
           </CardContent>
         </Card>
