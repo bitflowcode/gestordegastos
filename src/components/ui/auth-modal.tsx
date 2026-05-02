@@ -69,10 +69,12 @@ export function AuthModal({ isOpen, onClose, onSignUp, onSignIn, defaultTab = "s
     try {
       const { error } = await onSignUp(signupEmail, signupPassword)
       if (error) {
-        if (error.message.includes("already registered")) {
+        if (error.message.includes("already registered") || error.message.includes("User already registered")) {
           setError("Este email ya está registrado. Usa la pestaña de Iniciar Sesión.")
+        } else if (error.message.toLowerCase().includes("rate limit") || error.status === 429) {
+          setError("Demasiados intentos seguidos. Espera unos minutos antes de intentarlo de nuevo.")
         } else {
-          setError(error.message)
+          setError("No se pudo crear la cuenta. Inténtalo de nuevo.")
         }
       } else {
         // Éxito - mostrar pantalla de confirmación
@@ -138,7 +140,11 @@ export function AuthModal({ isOpen, onClose, onSignUp, onSignIn, defaultTab = "s
       })
       
       if (error) {
-        setError(error.message)
+        if (error.message.toLowerCase().includes("rate limit") || error.status === 429) {
+          setError("Has solicitado demasiados emails seguidos. Espera unos minutos antes de intentarlo de nuevo.")
+        } else {
+          setError(error.message)
+        }
       } else {
         setResetPasswordSent(true)
       }
