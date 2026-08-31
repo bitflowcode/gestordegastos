@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# notas y documentos de trabajo locales (no se publican)
+/notas-expense-tracker/
+/nueva-funcion-en-gastoguru-resumen-tarjeta/
+/progress.md

@@ -20,6 +20,16 @@ export const supabase = hasSupabaseConfig
 // Helper para verificar si Supabase está disponible
 export const isSupabaseConfigured = (): boolean => !!hasSupabaseConfig
 
+/**
+ * Origen de un gasto. Coincide con el CHECK de user_expenses.source.
+ *
+ * 'card_import_excluded' es un movimiento de extracto que el usuario descartó:
+ * la fila NO se borra, para que conserve su external_id y la deduplicación la
+ * omita en la siguiente importación. El hook la filtra al cargar, así que no
+ * cuenta en totales, gráficos ni presupuesto.
+ */
+export type ExpenseSource = 'manual' | 'card_import' | 'card_import_excluded'
+
 // Tipos para TypeScript
 export type Database = {
   public: {
@@ -58,6 +68,16 @@ export type Database = {
           is_recurring: boolean | null
           created_at: string
           updated_at: string
+          receipt_url: string | null
+          confidence_score: number | null
+          // Módulo "Tarjetas"
+          source: ExpenseSource
+          external_id: string | null
+          card_last4: string | null
+          merchant: string | null
+          currency: string | null
+          original_amount: number | null
+          exchange_rate: number | null
         }
         Insert: {
           id?: string
@@ -69,6 +89,15 @@ export type Database = {
           is_recurring?: boolean | null
           created_at?: string
           updated_at?: string
+          receipt_url?: string | null
+          confidence_score?: number | null
+          source?: ExpenseSource
+          external_id?: string | null
+          card_last4?: string | null
+          merchant?: string | null
+          currency?: string | null
+          original_amount?: number | null
+          exchange_rate?: number | null
         }
         Update: {
           id?: string
@@ -78,6 +107,47 @@ export type Database = {
           date?: string
           note?: string | null
           is_recurring?: boolean | null
+          created_at?: string
+          updated_at?: string
+          receipt_url?: string | null
+          confidence_score?: number | null
+          source?: ExpenseSource
+          external_id?: string | null
+          card_last4?: string | null
+          merchant?: string | null
+          currency?: string | null
+          original_amount?: number | null
+          exchange_rate?: number | null
+        }
+      }
+      card_budgets: {
+        Row: {
+          id: string
+          user_id: string
+          card_last4: string
+          month: string
+          amount: number
+          alert_threshold: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          card_last4: string
+          month: string
+          amount?: number
+          alert_threshold?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          card_last4?: string
+          month?: string
+          amount?: number
+          alert_threshold?: number | null
           created_at?: string
           updated_at?: string
         }

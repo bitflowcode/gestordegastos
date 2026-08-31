@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { generateUUID } from "@/lib/utils"
-import { supabase, isSupabaseConfigured } from "@/lib/supabase"
+import { supabase, isSupabaseConfigured, type ExpenseSource } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
 
 export interface Expense {
@@ -12,6 +12,18 @@ export interface Expense {
   date: string
   note?: string
   isRecurring?: boolean
+
+  // --- Módulo "Tarjetas" ---
+  // Opcionales: un gasto manual no los lleva. `amount` sigue siendo siempre el
+  // importe en la divisa base; originalAmount/currency/exchangeRate conservan
+  // el dato de origen para que la conversión sea auditable y recalculable.
+  source?: ExpenseSource
+  externalId?: string | null
+  cardLast4?: string | null
+  merchant?: string | null
+  currency?: string | null
+  originalAmount?: number | null
+  exchangeRate?: number | null
 }
 
 const STORAGE_KEY = "expenses-data"
@@ -98,15 +110,31 @@ export function useExpensesHybrid(user: User | null) {
 
       if (categoriesError) throw categoriesError
 
-      // Mapear datos de Supabase al formato local
-      const mappedExpenses = expensesData?.map(expense => ({
-        id: expense.id,
-        amount: expense.amount,
-        category: expense.category,
-        date: expense.date,
-        note: expense.note || "",
-        isRecurring: expense.is_recurring || false,
-      })) || []
+      // Mapear datos de Supabase al formato local.
+      //
+      // El filtro de 'card_import_excluded' vive AQUÍ, en la carga, y no debe
+      // confundirse con la consulta de deduplicación del importador, que es la
+      // opuesta: aquella SÍ tiene que devolver los excluidos (acotada por el
+      // rango de fechas del extracto), porque su external_id es justo lo que
+      // impide que un movimiento descartado reaparezca al reimportar.
+      // Son dos lecturas de la misma tabla con propósitos contrarios.
+      const mappedExpenses = (expensesData || [])
+        .filter(expense => expense.source !== 'card_import_excluded')
+        .map(expense => ({
+          id: expense.id,
+          amount: expense.amount,
+          category: expense.category,
+          date: expense.date,
+          note: expense.note || "",
+          isRecurring: expense.is_recurring || false,
+          source: (expense.source ?? 'manual') as ExpenseSource,
+          externalId: expense.external_id ?? null,
+          cardLast4: expense.card_last4 ?? null,
+          merchant: expense.merchant ?? null,
+          currency: expense.currency ?? null,
+          originalAmount: expense.original_amount ?? null,
+          exchangeRate: expense.exchange_rate ?? null,
+        }))
 
       const mappedCategories = categoriesData?.map(cat => cat.name) || DEFAULT_CATEGORIES
 
@@ -243,12 +271,25 @@ export function useExpensesHybrid(user: User | null) {
       // Modo guest: actualizar estado y localStorage
       setExpenses(prev => prev.filter(expense => expense.id !== id))
     } else if (supabase) {
-      // Modo autenticado: eliminar de Supabase
-      const { error } = await supabase
-        .from('user_expenses')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user!.id)
+      // Un movimiento importado de un extracto NO se borra: se marca como
+      // excluido. La fila conserva su external_id, y eso es justo lo que
+      // impide que reaparezca en la siguiente importación (el extracto del mes
+      // en curso se reimporta varias veces dentro del mismo mes). Al quedar
+      // fuera del mapeo de carga, deja de contar en totales y presupuesto, y
+      // sigue siendo recuperable.
+      const esImportado = expenses.find(e => e.id === id)?.source === 'card_import'
+
+      const { error } = esImportado
+        ? await supabase
+            .from('user_expenses')
+            .update({ source: 'card_import_excluded' })
+            .eq('id', id)
+            .eq('user_id', user!.id)
+        : await supabase
+            .from('user_expenses')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user!.id)
 
       if (error) {
         console.error("Error deleting expense:", error)
@@ -269,16 +310,23 @@ export function useExpensesHybrid(user: User | null) {
         )
       )
     } else if (supabase) {
-      // Modo autenticado: actualizar en Supabase
+      // Solo se envían los campos presentes. Construirlo como
+      // `note: updatedExpense.note || null` borraba la nota en cualquier
+      // actualización parcial, y lo mismo `is_recurring`.
+      //
+      // Los campos del módulo de tarjetas no se tocan nunca aquí: así,
+      // recategorizar un movimiento importado desde el Historial no le borra el
+      // external_id, que es la clave de la deduplicación.
+      const payload: Record<string, unknown> = {}
+      if (updatedExpense.amount !== undefined) payload.amount = updatedExpense.amount
+      if (updatedExpense.category !== undefined) payload.category = updatedExpense.category
+      if (updatedExpense.date !== undefined) payload.date = updatedExpense.date
+      if (updatedExpense.note !== undefined) payload.note = updatedExpense.note || null
+      if (updatedExpense.isRecurring !== undefined) payload.is_recurring = updatedExpense.isRecurring
+
       const { error } = await supabase
         .from('user_expenses')
-        .update({
-          amount: updatedExpense.amount,
-          category: updatedExpense.category,
-          date: updatedExpense.date,
-          note: updatedExpense.note || null,
-          is_recurring: updatedExpense.isRecurring || false,
-        })
+        .update(payload)
         .eq('id', id)
         .eq('user_id', user!.id)
 
@@ -348,6 +396,13 @@ export function useExpensesHybrid(user: User | null) {
     }
   }, [expenses, categories, isLoading, isGuest])
 
+  // Refresca los gastos desde Supabase sin mostrar pantalla de carga.
+  // Lo necesita el importador de extractos: sin esto, los movimientos recién
+  // insertados no aparecerían hasta recargar la página.
+  const reload = async () => {
+    await loadData(false)
+  }
+
   // Funciones de utilidad (sin cambios)
   const getExpensesByMonth = (month: string) => {
     return expenses.filter((expense) => expense.date.startsWith(month))
@@ -379,6 +434,7 @@ export function useExpensesHybrid(user: User | null) {
     isLoading,
     isSyncing,
     isGuest,
+    reload,
     addExpense,
     deleteExpense,
     updateExpense,
