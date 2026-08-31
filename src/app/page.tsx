@@ -11,7 +11,7 @@ import { SettingsView } from "@/components/ui/settings-view"
 import { useExpensesHybrid } from "@/hooks/use-expenses-hybrid"
 import { useAuth } from "@/components/auth-provider"
 import { formatDateToString } from "@/lib/utils"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { FabAddExpense } from "@/components/ui/fab-add-expense"
 import { ChevronLeft, ChevronRight, Edit, Trash2, Cloud, Loader2, User } from "lucide-react"
 import { useRecurringExpenses } from "@/hooks/use-recurring-expenses"
@@ -64,18 +64,35 @@ export default function ExpenseTrackerApp() {
     deleteRecurring,
   } = useRecurringExpenses()
 
-  // Obtener todos los meses con gastos registrados
-  const allMonths = Array.from(new Set(expenses.map(e => e.date.slice(0, 7)))).sort()
-  const currentMonth = new Date().toISOString().slice(0, 7)
+  // Meses navegables en el panel: solo los que están cargados, para no poder
+  // seleccionar un mes que mostraría cero por no tener sus datos en memoria.
+  // El listado completo (incluidos los anteriores a la ventana de carga) es
+  // `availableMonths`, y lo usa el Historial, que sí puede pedirlos.
+  const allMonths = useMemo(
+    () => Array.from(new Set(expenses.map(e => e.date.slice(0, 7)))).sort(),
+    [expenses]
+  )
+  // Fecha local: con toISOString(), a primera hora del día 1 la app abría
+  // todavía en el mes anterior por el desfase con UTC.
+  const currentMonth = formatDateToString(new Date()).slice(0, 7)
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [activeTab, setActiveTab] = useState("dashboard")
 
   // Calcular el índice del mes seleccionado
   const selectedMonthIndex = allMonths.indexOf(selectedMonth)
 
-  // Actualizar resumen según el mes seleccionado
-  const monthlyTotal = getTotalByMonth(selectedMonth)
-  const expensesByCategory = getExpensesByCategory(selectedMonth)
+  // Memoizado: sin esto se recorría el array completo en cada render, y el
+  // volumen crece mucho al importar extractos.
+  const monthlyTotal = useMemo(
+    () => getTotalByMonth(selectedMonth),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [expenses, selectedMonth]
+  )
+  const expensesByCategory = useMemo(
+    () => getExpensesByCategory(selectedMonth),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [expenses, selectedMonth]
+  )
 
   // Funciones para navegar entre meses
   const goToPrevMonth = () => {
