@@ -13,7 +13,7 @@ import {
 } from "./alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Edit, Download, FileDown, Printer, Search, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { formatCurrency, formatDateToString } from "@/lib/utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./sheet"
 import { ExpenseForm } from "./expense-form"
@@ -37,9 +37,42 @@ interface ExpenseHistoryProps {
   onDeleteExpense?: (id: string) => void
   onEditExpense?: (id: string, expense: Omit<Expense, "id">) => void
   categories: string[]
+  /**
+   * Meses con gastos en la base de datos, incluidos los anteriores a la ventana
+   * de carga. Sin esto el selector se construye solo con lo que hay en memoria,
+   * y los meses antiguos desaparecen sin forma de pedirlos.
+   */
+  availableMonths?: string[]
+  isMonthLoaded?: (month: string) => boolean
+  loadMonth?: (month: string) => Promise<void>
+  loadingMonth?: string | null
 }
 
-export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categories }: ExpenseHistoryProps) {
+/**
+ * 'YYYY-MM' -> 'agosto de 2026' sin pasar por Date: new Date('2026-08') se
+ * interpreta como medianoche UTC, y en husos negativos el desplazamiento
+ * mostraba el mes anterior en el selector.
+ */
+const NOMBRES_MES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+function formatMonthLabel(month: string): string {
+  const [year, m] = month.split("-")
+  const nombre = NOMBRES_MES[Number(m) - 1]
+  return nombre ? `${nombre} de ${year}` : month
+}
+
+export function ExpenseHistory({
+  expenses,
+  onDeleteExpense,
+  onEditExpense,
+  categories,
+  availableMonths,
+  isMonthLoaded,
+  loadMonth,
+  loadingMonth,
+}: ExpenseHistoryProps) {
   const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null)
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null)
   const [selectedMonth, setSelectedMonth] = useState<string>("all") // Valor por defecto "all"
@@ -65,10 +98,45 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
     }
   }
 
-  // Obtener lista única de meses disponibles
-  const months = Array.from(new Set(expenses.map((expense) => expense.date.slice(0, 7)))).sort((a, b) =>
-    b.localeCompare(a),
+  // Meses cargados en memoria. Como conjunto y no con isMonthLoaded() por mes:
+  // esa función recorre el array de gastos en cada llamada, y el volumen crece
+  // mucho al importar extractos.
+  const loadedMonths = useMemo(
+    () => new Set(expenses.map((expense) => expense.date.slice(0, 7))),
+    [expenses]
   )
+
+  // Meses ofrecidos: los que existen en la base de datos más los que hay en
+  // memoria. La unión importa porque `availableMonths` se calcula al cargar y
+  // no se recalcula al añadir un gasto: sin ella, un gasto en un mes nuevo no
+  // aparecería en el selector hasta recargar.
+  const months = useMemo(
+    () =>
+      Array.from(new Set((availableMonths || []).concat(Array.from(loadedMonths)))).sort((a, b) =>
+        b.localeCompare(a)
+      ),
+    [availableMonths, loadedMonths]
+  )
+
+  // Meses que existen pero cuyos gastos no están cargados. Se avisa porque el
+  // total de "Ver Todos los Gastos" solo suma lo cargado.
+  const unloadedMonths = months.filter((m) => !loadedMonths.has(m))
+  // Ningún mes en memoria y sí meses con gastos en la base: el total sería un
+  // 0,00 € creíble y falso, así que no se muestra total en ese caso.
+  const nothingLoaded =
+    selectedMonth === "all" && loadedMonths.size === 0 && unloadedMonths.length > 0
+  const selectedMonthMissing =
+    selectedMonth !== "all" && !!isMonthLoaded && !isMonthLoaded(selectedMonth)
+  const isLoadingSelectedMonth = loadingMonth === selectedMonth
+
+  // Pide el mes al seleccionarlo. El estado se cambia igualmente: mientras
+  // llega, la vista dice que está cargando en lugar de enseñar un total de cero.
+  const handleSelectMonth = (month: string) => {
+    setSelectedMonth(month)
+    if (month !== "all" && loadMonth && isMonthLoaded && !isMonthLoaded(month)) {
+      void loadMonth(month)
+    }
+  }
 
   // Filtrar gastos por mes seleccionado (si no es "all") y término de búsqueda
   const filteredExpenses = expenses
@@ -117,7 +185,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
     const title =
       selectedMonth === "all"
         ? "Todos los Gastos"
-        : `Gastos - ${new Date(selectedMonth).toLocaleString("es-ES", { month: "long", year: "numeric" })}`
+        : `Gastos - ${formatMonthLabel(selectedMonth)}`
     doc.setFontSize(16)
     doc.text(title, 14, 15)
 
@@ -154,7 +222,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
     const title =
       selectedMonth === "all"
         ? "Todos los Gastos"
-        : `Gastos - ${new Date(selectedMonth).toLocaleString("es-ES", { month: "long", year: "numeric" })}`
+        : `Gastos - ${formatMonthLabel(selectedMonth)}`
 
     printContent.innerHTML = `
       <h2>${title}</h2>
@@ -217,7 +285,7 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <Select value={selectedMonth} onValueChange={handleSelectMonth}>
             <SelectTrigger className="w-[240px]">
               <SelectValue placeholder="Selecciona un período" />
             </SelectTrigger>
@@ -225,21 +293,23 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
               <SelectItem value="all">Ver Todos los Gastos</SelectItem>
               {months.map((month) => (
                 <SelectItem key={month} value={month}>
-                  {new Date(month).toLocaleString("es-ES", { month: "long", year: "numeric" })}
+                  {formatMonthLabel(month)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportCSV}>
+            {/* Sin los datos del mes cargados, exportar produciría un archivo
+                vacío con apariencia de completo. */}
+            <Button variant="outline" onClick={handleExportCSV} disabled={selectedMonthMissing || nothingLoaded}>
               <Download className="h-4 w-4 mr-2" />
               CSV
             </Button>
-            <Button variant="outline" onClick={handleExportPDF}>
+            <Button variant="outline" onClick={handleExportPDF} disabled={selectedMonthMissing || nothingLoaded}>
               <FileDown className="h-4 w-4 mr-2" />
               PDF
             </Button>
-            <Button variant="outline" onClick={handlePrint}>
+            <Button variant="outline" onClick={handlePrint} disabled={selectedMonthMissing || nothingLoaded}>
               <Printer className="h-4 w-4 mr-2" />
               Imprimir
             </Button>
@@ -256,7 +326,49 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
           />
         </div>
 
-        <div className="text-lg font-semibold">Total: {formatCurrency(totalAmount)}</div>
+        {/* Un mes fuera de la ventana de carga no muestra total ni tabla: un cero
+            o una tabla vacía se leen como "no hubo gastos", que es falso. */}
+        {selectedMonthMissing ? (
+          <div className="rounded-md border p-6 text-center space-y-3">
+            {isLoadingSelectedMonth ? (
+              <p className="text-muted-foreground">
+                Cargando los gastos de {formatMonthLabel(selectedMonth)}…
+              </p>
+            ) : (
+              <>
+                <p className="text-muted-foreground">
+                  Los gastos de {formatMonthLabel(selectedMonth)} no se han podido cargar.
+                </p>
+                <Button variant="outline" onClick={() => loadMonth?.(selectedMonth)}>
+                  Reintentar
+                </Button>
+              </>
+            )}
+          </div>
+        ) : (
+        <>
+        <div className="space-y-1">
+          {nothingLoaded ? (
+            <p className="text-muted-foreground">
+              Ningún mes está cargado todavía. Hay {unloadedMonths.length} meses con gastos:
+              selecciona uno en la lista para consultarlo.
+            </p>
+          ) : (
+            <>
+              <div className="text-lg font-semibold">
+                {selectedMonth === "all" && unloadedMonths.length > 0 ? "Total cargado: " : "Total: "}
+                {formatCurrency(totalAmount)}
+              </div>
+              {selectedMonth === "all" && unloadedMonths.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No incluye {unloadedMonths.length}{" "}
+                  {unloadedMonths.length === 1 ? "mes anterior" : "meses anteriores"} sin cargar.
+                  Selecciónalos en la lista para consultarlos.
+                </p>
+              )}
+            </>
+          )}
+        </div>
 
         <div className="rounded-md border">
           <Table>
@@ -291,6 +403,8 @@ export function ExpenseHistory({ expenses, onDeleteExpense, onEditExpense, categ
             </TableBody>
           </Table>
         </div>
+        </>
+        )}
       </CardContent>
 
       <AlertDialog open={!!expenseToDelete} onOpenChange={() => setExpenseToDelete(null)}>

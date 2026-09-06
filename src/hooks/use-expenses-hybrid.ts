@@ -43,6 +43,13 @@ const DEFAULT_CATEGORIES = ["Alimentación", "Transporte", "Vivienda", "Entreten
  */
 const LOAD_WINDOW_MONTHS = 24
 
+/**
+ * Mínimo entre recargas al volver a la aplicación. Sin él, cambiar de ventana
+ * tres veces seguidas dispararía tres cargas completas. Es el mismo criterio
+ * que aplican las bibliotecas de datos al revalidar por foco.
+ */
+const REVALIDATE_MIN_MS = 60_000
+
 /** Primer día del mes que abre la ventana de carga, en fecha local. */
 function windowStartDate(months: number): string {
   const d = new Date()
@@ -104,6 +111,17 @@ export function useExpensesHybrid(user: User | null) {
   // Rastrea el userId previo para distinguir carga inicial de refrescos de token
   const prevUserIdRef = useRef<string | null | undefined>(undefined)
 
+  // Meses anteriores a la ventana que el usuario ha pedido con loadMonth().
+  // Hay que recordarlos porque loadFromSupabase() REEMPLAZA el estado, y se
+  // ejecuta muchas más veces de lo que parece: onAuthStateChange dispara un
+  // setUser nuevo al refrescar el token y al volver el foco a la ventana, así
+  // que sin esto el mes consultado desaparecía de la pantalla solo con cambiar
+  // de aplicación y volver.
+  const extraMonthsRef = useRef<Set<string>>(new Set())
+
+  /** Momento de la última carga completa, para no repetirla al volver el foco. */
+  const lastLoadRef = useRef(0)
+
   const isGuest = !user
 
   // Cargar datos al inicializar o cuando cambia la identidad del usuario
@@ -115,7 +133,12 @@ export function useExpensesHybrid(user: User | null) {
     // Solo mostrar pantalla de carga en la primera carga o si el usuario cambia.
     // Si es un refresco de token (mismo userId), sincronizar en segundo plano.
     loadData(isFirstLoad || userIdChanged)
-  }, [user])
+    // Depende del IDENTIFICADOR, no del objeto: onAuthStateChange entrega un
+    // `user` nuevo en cada refresco de token, y con [user] este efecto recargaba
+    // todo tres veces al arrancar y otra más cada vez que la ventana recuperaba
+    // el foco, borrando de paso los meses pedidos con loadMonth().
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   const loadData = async (showLoadingSpinner = true) => {
     if (showLoadingSpinner) setIsLoading(true)
@@ -132,9 +155,29 @@ export function useExpensesHybrid(user: User | null) {
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
+      lastLoadRef.current = Date.now()
       setIsLoading(false)
     }
   }
+
+  // Revalidación al volver a la aplicación. Es deliberada y acotada: los datos
+  // cambian sin que el usuario toque nada (importador de Gmail, webhooks de
+  // n8n), así que conviene refrescar al regresar, pero no en cada alternancia
+  // de ventana. Antes ocurría por accidente, como efecto colateral de los
+  // eventos de sesión, y de forma distinta en cada navegador.
+  useEffect(() => {
+    if (isGuest) return
+
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - lastLoadRef.current < REVALIDATE_MIN_MS) return
+      loadData(false)
+    }
+
+    document.addEventListener('visibilitychange', alVolver)
+    return () => document.removeEventListener('visibilitychange', alVolver)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, user?.id])
 
   const loadFromLocalStorage = async () => {
     try {
@@ -150,6 +193,23 @@ export function useExpensesHybrid(user: User | null) {
     } catch (error) {
       console.error("Error loading from localStorage:", error)
     }
+  }
+
+  /** Gastos de un mes concreto, ya mapeados y sin los excluidos. */
+  const fetchMonthExpenses = async (month: string): Promise<Expense[]> => {
+    if (!user || !supabase) return []
+    const { data, error } = await supabase
+      .from('user_expenses')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('date', `${month}-01`)
+      .lt('date', nextMonthStart(month))
+      .order('date', { ascending: false })
+
+    if (error) throw error
+    return (data || [])
+      .filter(e => e.source !== 'card_import_excluded')
+      .map(mapExpenseFromDb)
   }
 
   const loadFromSupabase = async () => {
@@ -170,11 +230,16 @@ export function useExpensesHybrid(user: User | null) {
       // permite ofrecerlos en el Historial y pedirlos con loadMonth(). Sin esta
       // consulta, la carga bajo demanda no tendría disparador, porque el
       // selector se construiría solo con lo ya cargado.
-      const { data: monthsData } = await supabase
+      const { data: monthsData, error: monthsError } = await supabase
         .from('user_expenses')
         .select('date')
         .eq('user_id', user.id)
         .neq('source', 'card_import_excluded')
+
+      // No aborta la carga —los gastos de la ventana ya están—, pero tampoco se
+      // ignora: sin esta comprobación, un fallo aquí dejaba availableMonths
+      // vacío y el Historial se quedaba sin selector de meses en silencio.
+      if (monthsError) console.error("Error cargando los meses disponibles:", monthsError)
 
       // Cargar categorías
       const { data: categoriesData, error: categoriesError } = await supabase
@@ -198,10 +263,33 @@ export function useExpensesHybrid(user: User | null) {
 
       const mappedCategories = categoriesData?.map(cat => cat.name) || DEFAULT_CATEGORIES
 
-      setExpenses(mappedExpenses)
+      // Se recuperan los meses pedidos bajo demanda que quedan fuera de la
+      // ventana. Si alguno falla, se pierde ese mes pero no la carga entera.
+      const inicioVentana = windowStartDate(LOAD_WINDOW_MONTHS).slice(0, 7)
+      const mesesExtra = Array.from(extraMonthsRef.current).filter(m => m < inicioVentana)
+      let filasExtra: Expense[] = []
+      if (mesesExtra.length > 0) {
+        const resultados = await Promise.all(
+          mesesExtra.map(m =>
+            fetchMonthExpenses(m).catch(error => {
+              console.error(`Error recargando el mes ${m}:`, error)
+              return [] as Expense[]
+            })
+          )
+        )
+        filasExtra = ([] as Expense[]).concat.apply([], resultados)
+      }
+
+      const conocidos = new Set(mappedExpenses.map(e => e.id))
+      setExpenses(mappedExpenses.concat(filasExtra.filter(e => !conocidos.has(e.id))))
       setCategories(mappedCategories)
+      // Si la consulta de meses falló, se degrada a los meses de la ventana ya
+      // cargada: son menos de los que hay, pero todos son ciertos y navegables.
+      const mesesOrigen = monthsError
+        ? mappedExpenses.map(e => e.date)
+        : (monthsData || []).map((r: { date: string }) => r.date)
       setAvailableMonths(
-        Array.from(new Set((monthsData || []).map((r: { date: string }) => r.date.slice(0, 7)))).sort()
+        Array.from(new Set(mesesOrigen.map(d => d.slice(0, 7)))).sort()
       )
     } catch (error) {
       console.error("Error loading from Supabase:", error)
@@ -472,19 +560,8 @@ export function useExpensesHybrid(user: User | null) {
 
     setLoadingMonth(month)
     try {
-      const { data, error } = await supabase
-        .from('user_expenses')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('date', `${month}-01`)
-        .lt('date', nextMonthStart(month))
-        .order('date', { ascending: false })
-
-      if (error) throw error
-
-      const nuevos = (data || [])
-        .filter(e => e.source !== 'card_import_excluded')
-        .map(mapExpenseFromDb)
+      const nuevos = await fetchMonthExpenses(month)
+      extraMonthsRef.current.add(month)
 
       setExpenses(prev => {
         const conocidos = new Set(prev.map(e => e.id))

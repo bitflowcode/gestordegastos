@@ -55,6 +55,10 @@ export default function ExpenseTrackerApp() {
     getTotalByMonth,
     addCategory,
     removeCategory,
+    availableMonths,
+    loadMonth,
+    isMonthLoaded,
+    loadingMonth,
   } = useExpensesHybrid(user)
 
   const {
@@ -390,6 +394,10 @@ export default function ExpenseTrackerApp() {
               categories={categories}
               onDeleteExpense={deleteExpense}
               onEditExpense={handleEditExpense}
+              availableMonths={availableMonths}
+              isMonthLoaded={isMonthLoaded}
+              loadMonth={loadMonth}
+              loadingMonth={loadingMonth}
             />
           </TabsContent>
 
