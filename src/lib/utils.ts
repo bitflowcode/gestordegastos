@@ -48,3 +48,19 @@ export function formatDateToString(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+
+const NOMBRES_MES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+
+/**
+ * 'YYYY-MM' -> 'agosto de 2026' sin pasar por Date: new Date('2026-08') y
+ * new Date('2026-08-01') se interpretan como medianoche UTC, y en husos
+ * negativos el desplazamiento muestra el mes anterior.
+ */
+export function formatMonthLabel(month: string): string {
+  const [year, m] = month.split("-")
+  const nombre = NOMBRES_MES[Number(m) - 1]
+  return nombre ? `${nombre} de ${year}` : month
+}

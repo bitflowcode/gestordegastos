@@ -10,7 +10,7 @@ import { ExpenseHistory } from "@/components/ui/expense-history"
 import { SettingsView } from "@/components/ui/settings-view"
 import { useExpensesHybrid } from "@/hooks/use-expenses-hybrid"
 import { useAuth } from "@/components/auth-provider"
-import { formatDateToString } from "@/lib/utils"
+import { formatDateToString, formatMonthLabel } from "@/lib/utils"
 import { useState, useEffect, useMemo } from "react"
 import { FabAddExpense } from "@/components/ui/fab-add-expense"
 import { ChevronLeft, ChevronRight, Edit, Trash2, Cloud, Loader2, User } from "lucide-react"
@@ -68,22 +68,29 @@ export default function ExpenseTrackerApp() {
     deleteRecurring,
   } = useRecurringExpenses()
 
-  // Meses navegables en el panel: solo los que están cargados, para no poder
-  // seleccionar un mes que mostraría cero por no tener sus datos en memoria.
-  // El listado completo (incluidos los anteriores a la ventana de carga) es
-  // `availableMonths`, y lo usa el Historial, que sí puede pedirlos.
-  const allMonths = useMemo(
-    () => Array.from(new Set(expenses.map(e => e.date.slice(0, 7)))).sort(),
-    [expenses]
-  )
   // Fecha local: con toISOString(), a primera hora del día 1 la app abría
   // todavía en el mes anterior por el desfase con UTC.
   const currentMonth = formatDateToString(new Date()).slice(0, 7)
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const [activeTab, setActiveTab] = useState("dashboard")
 
+  // Meses navegables: todos los que tienen gastos, estén cargados o no, más el
+  // mes en curso. Antes solo se listaban los cargados, y eso encerraba al
+  // usuario: si el mes actual no tenía gastos, el índice era -1 y las dos
+  // flechas quedaban deshabilitadas a la vez, sin forma de llegar a ningún mes.
+  // Los que caen fuera de la ventana se piden con loadMonth al navegar hasta
+  // ellos, igual que en el Historial.
+  const allMonths = useMemo(
+    () =>
+      Array.from(
+        new Set(availableMonths.concat(expenses.map(e => e.date.slice(0, 7))).concat([currentMonth]))
+      ).sort(),
+    [availableMonths, expenses, currentMonth]
+  )
+
   // Calcular el índice del mes seleccionado
   const selectedMonthIndex = allMonths.indexOf(selectedMonth)
+  const selectedMonthLoaded = isMonthLoaded(selectedMonth)
 
   // Memoizado: sin esto se recorría el array completo en cada render, y el
   // volumen crece mucho al importar extractos.
@@ -98,12 +105,18 @@ export default function ExpenseTrackerApp() {
     [expenses, selectedMonth]
   )
 
-  // Funciones para navegar entre meses
+  // Funciones para navegar entre meses. El mes se selecciona igualmente aunque
+  // no esté cargado: mientras llega, el panel dice que está cargando en lugar de
+  // enseñar un total de cero.
+  const irAlMes = (month: string) => {
+    setSelectedMonth(month)
+    if (!isMonthLoaded(month)) void loadMonth(month)
+  }
   const goToPrevMonth = () => {
-    if (selectedMonthIndex > 0) setSelectedMonth(allMonths[selectedMonthIndex - 1])
+    if (selectedMonthIndex > 0) irAlMes(allMonths[selectedMonthIndex - 1])
   }
   const goToNextMonth = () => {
-    if (selectedMonthIndex < allMonths.length - 1) setSelectedMonth(allMonths[selectedMonthIndex + 1])
+    if (selectedMonthIndex < allMonths.length - 1) irAlMes(allMonths[selectedMonthIndex + 1])
   }
 
   const handleAddExpense = () => {
@@ -251,19 +264,43 @@ export default function ExpenseTrackerApp() {
                 <ChevronLeft className="w-6 h-6" />
               </button>
               <span className="text-lg font-medium">
-                {selectedMonth ? new Date(selectedMonth + "-01").toLocaleString("es-ES", { month: "long", year: "numeric" }) : ""}
+                {selectedMonth ? formatMonthLabel(selectedMonth) : ""}
               </span>
               <button onClick={goToNextMonth} disabled={selectedMonthIndex >= allMonths.length - 1} className="p-2 disabled:opacity-30">
                 <ChevronRight className="w-6 h-6" />
               </button>
             </div>
-            <ExpenseCard
-              title="Resumen del Mes"
-              description="Vista general de tus gastos"
-              total={monthlyTotal}
-              data={expensesByCategory}
-              onViewHistory={handleViewHistory}
-            />
+            {/* Un mes que no está en memoria no se resume: un total de 0 € y un
+                gráfico vacío se leen como "no gastaste nada", que es falso. */}
+            {selectedMonthLoaded ? (
+              <ExpenseCard
+                title="Resumen del Mes"
+                description="Vista general de tus gastos"
+                total={monthlyTotal}
+                data={expensesByCategory}
+                onViewHistory={handleViewHistory}
+              />
+            ) : (
+              <div className="rounded-xl bg-background text-foreground border border-border shadow p-6 text-center space-y-3">
+                {loadingMonth === selectedMonth ? (
+                  <p className="text-muted-foreground">
+                    Cargando los gastos de {formatMonthLabel(selectedMonth)}…
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-muted-foreground">
+                      Los gastos de {formatMonthLabel(selectedMonth)} no se han podido cargar.
+                    </p>
+                    <button
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow transition-colors"
+                      onClick={() => loadMonth(selectedMonth)}
+                    >
+                      Reintentar
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             {/* Tarjeta de Gastos Recurrentes */}
             <div className="mt-6 mb-4">
               <div className="rounded-xl bg-background text-foreground border border-border shadow p-6 flex flex-col items-start w-full">
@@ -294,7 +331,10 @@ export default function ExpenseTrackerApp() {
                 </button>
               </div>
             </div>
-            {/* Lista de Gastos Recurrentes del Mes */}
+            {/* Lista de Gastos Recurrentes del Mes. Solo con el mes cargado: sin
+                sus gastos, "no hay recurrentes este mes" sería una afirmación
+                sin datos detrás. */}
+            {selectedMonthLoaded && (
             <div className="mb-4">
               <div className="rounded-xl bg-background text-foreground border border-border shadow p-6 flex flex-col items-start w-full">
                 <h2 className="text-lg font-bold text-foreground mb-2">Lista de Gastos Recurrentes del Mes</h2>
@@ -333,6 +373,7 @@ export default function ExpenseTrackerApp() {
                 </ul>
               </div>
             </div>
+            )}
             {/* Sugerencias de recurrentes */}
             {suggestions.length > 0 && (
               <div className="mb-4">

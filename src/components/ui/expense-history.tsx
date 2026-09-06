@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Edit, Download, FileDown, Printer, Search, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { formatCurrency, formatDateToString } from "@/lib/utils"
+import { formatCurrency, formatDateToString, formatMonthLabel } from "@/lib/utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./sheet"
 import { ExpenseForm } from "./expense-form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select"
@@ -46,21 +46,6 @@ interface ExpenseHistoryProps {
   isMonthLoaded?: (month: string) => boolean
   loadMonth?: (month: string) => Promise<void>
   loadingMonth?: string | null
-}
-
-/**
- * 'YYYY-MM' -> 'agosto de 2026' sin pasar por Date: new Date('2026-08') se
- * interpreta como medianoche UTC, y en husos negativos el desplazamiento
- * mostraba el mes anterior en el selector.
- */
-const NOMBRES_MES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-]
-function formatMonthLabel(month: string): string {
-  const [year, m] = month.split("-")
-  const nombre = NOMBRES_MES[Number(m) - 1]
-  return nombre ? `${nombre} de ${year}` : month
 }
 
 export function ExpenseHistory({

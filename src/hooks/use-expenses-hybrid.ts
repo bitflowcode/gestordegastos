@@ -548,6 +548,18 @@ export function useExpensesHybrid(user: User | null) {
   }, [expenses, categories, isLoading, isGuest])
 
   /**
+   * ¿Está ese mes en memoria? Falso significa "pídelo con loadMonth".
+   *
+   * Un mes dentro de la ventana cuenta como cargado aunque no tenga ni un gasto:
+   * ahí el cero es cierto y hay que mostrarlo. Sin esa condición, el mes en
+   * curso sin gastos se confundiría con un mes no disponible.
+   */
+  const isMonthLoaded = (month: string) =>
+    isGuest ||
+    month >= windowStartDate(LOAD_WINDOW_MONTHS).slice(0, 7) ||
+    expenses.some(e => e.date.startsWith(month))
+
+  /**
    * Carga bajo demanda un mes anterior a la ventana y lo fusiona en el estado.
    *
    * Sin esto, seleccionar un mes antiguo mostraría cero gastos: un número falso
@@ -555,8 +567,8 @@ export function useExpensesHybrid(user: User | null) {
    * esté cargado debe llamar aquí antes, o indicar que no está disponible.
    */
   const loadMonth = async (month: string) => {
-    if (isGuest || !user || !supabase) return          // en guest está todo en memoria
-    if (expenses.some(e => e.date.startsWith(month))) return  // ya cargado
+    if (isGuest || !user || !supabase) return   // en guest está todo en memoria
+    if (isMonthLoaded(month)) return           // la ventana ya lo cubre, o ya está
 
     setLoadingMonth(month)
     try {
@@ -573,10 +585,6 @@ export function useExpensesHybrid(user: User | null) {
       setLoadingMonth(null)
     }
   }
-
-  /** ¿Está ese mes en memoria? Falso significa "pídelo con loadMonth". */
-  const isMonthLoaded = (month: string) =>
-    isGuest || expenses.some(e => e.date.startsWith(month))
 
   // Refresca los gastos desde Supabase sin mostrar pantalla de carga.
   // Lo necesita el importador de extractos: sin esto, los movimientos recién
