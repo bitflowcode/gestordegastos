@@ -43,7 +43,7 @@ export function ReceiptScanner({ categories, onSubmit, onClose }: ReceiptScanner
     setCurrentStep("processing")
     
     try {
-      const extractedData = await processImage(imageFile)
+      const extractedData = await processImage(imageFile, categories)
       
       // Usar la data URL de los datos extraídos o mantener la temporal
       if (extractedData.imageDataUrl) {

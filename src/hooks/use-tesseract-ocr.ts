@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { convertPdfToImageWithDataUrl, isPdfFile } from "@/lib/pdf-utils"
+import { sugerirCategoria } from "@/lib/merchant-category"
 
 // Importación dinámica de Tesseract para evitar problemas con Turbopack
 const getTesseract = async () => {
@@ -30,7 +31,7 @@ export function useTesseractOCR() {
   const [progress, setProgress] = useState<OCRProgress>({ status: "", progress: 0 })
   const [error, setError] = useState<string | null>(null)
 
-  const extractDataFromText = useCallback((text: string): ScannedData => {
+  const extractDataFromText = useCallback((text: string, categorias: string[]): ScannedData => {
     const cleanText = text.replace(/\n/g, " ").replace(/\s+/g, " ").trim()
     
     // Patrones para extraer información
@@ -179,22 +180,13 @@ export function useTesseractOCR() {
       }
     }
 
-    // Determinar categoría basada en palabras clave
-    const categoryKeywords = {
-      "Alimentación": ["supermercado", "mercado", "alimentación", "comida", "carrefour", "mercadona", "dia", "lidl", "aldi"],
-      "Restaurante": ["restaurante", "bar", "cafe", "cafeteria", "McDonald", "burger", "pizza"],
-      "Farmacia": ["farmacia", "medicina", "medicamento", "salud"],
-      "Transporte": ["gasolina", "combustible", "metro", "bus", "taxi", "uber", "parking"],
-      "Ropa": ["moda", "ropa", "zara", "h&m", "tienda"],
-      "Hogar": ["ferreteria", "bricomart", "ikea", "decoración", "muebles"]
-    }
-
-    for (const [cat, keywords] of Object.entries(categoryKeywords)) {
-      if (keywords.some(keyword => cleanText.toLowerCase().includes(keyword))) {
-        category = cat
-        break
-      }
-    }
+    // La categoría la resuelve la función compartida con el importador de
+    // extractos y el webhook de n8n, contra las categorías que el usuario tiene.
+    // La tabla que había aquí asignaba 'Restaurante', 'Farmacia', 'Ropa' y
+    // 'Hogar', que no existen en la aplicación, y buscaba con includes() sin
+    // límite de palabra, así que MEDIAMARKT se categorizaba como supermercado
+    // por contener 'dia'.
+    category = sugerirCategoria(cleanText, categorias) ?? undefined
 
     // Calcular confianza basada en datos extraídos
     let confidence = 0
@@ -214,7 +206,7 @@ export function useTesseractOCR() {
     }
   }, [])
 
-  const processImage = useCallback(async (inputFile: File): Promise<ScannedData> => {
+  const processImage = useCallback(async (inputFile: File, categorias: string[]): Promise<ScannedData> => {
     setIsProcessing(true)
     setError(null)
     setProgress({ status: "Inicializando...", progress: 0 })
@@ -299,7 +291,7 @@ export function useTesseractOCR() {
 
       setProgress({ status: "Extrayendo datos...", progress: 95 })
 
-      const extractedData = extractDataFromText(result.data.text)
+      const extractedData = extractDataFromText(result.data.text, categorias)
       
       // Agregar la data URL al resultado
       extractedData.imageDataUrl = imageDataUrl

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { sugerirCategoria } from '@/lib/merchant-category'
 
 // Crear cliente de Supabase con Service Role Key para bypasear RLS
 const getSupabaseAdmin = () => {
@@ -56,9 +57,24 @@ export async function POST(request: NextRequest) {
     // Procesar fecha (usar actual si no viene)
     const expenseDate = data.date || new Date().toISOString().slice(0, 10)
     
-    // Determinar categoría inteligentemente si no viene
-    const category = data.category || await suggestCategory(data.merchant, data.note)
-    
+    const supabaseAdmin = getSupabaseAdmin()
+
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Database not configured. Missing SUPABASE_SERVICE_ROLE_KEY' }, 
+        { status: 500 }
+      )
+    }
+
+    // Determinar categoría si no viene. Se resuelve contra las categorías que el
+    // usuario tiene de verdad: la tabla que había aquí asignaba 'Hogar', que no
+    // existe en la aplicación, y como `category` es texto libre sin clave ajena,
+    // esos gastos quedaban fuera de todos los filtros y de la leyenda del
+    // gráfico. El cliente admin ya está resuelto arriba y se reutiliza.
+    const category =
+      data.category ||
+      await sugerirCategoriaDelUsuario(supabaseAdmin, data)
+
     // Crear el gasto en Supabase
     const newExpense = {
       user_id: data.userId,
@@ -67,15 +83,6 @@ export async function POST(request: NextRequest) {
       date: expenseDate,
       note: buildNote(data),
       is_recurring: false
-    }
-
-    const supabaseAdmin = getSupabaseAdmin()
-    
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Database not configured. Missing SUPABASE_SERVICE_ROLE_KEY' }, 
-        { status: 500 }
-      )
     }
 
     const { data: insertedExpense, error } = await supabaseAdmin
@@ -120,26 +127,24 @@ function generateApiKey(userId: string): string {
   return Buffer.from(`${userId}:${secret}`).toString('base64')
 }
 
-// Función para sugerir categoría basada en merchant/nota
-async function suggestCategory(merchant?: string, note?: string): Promise<string> {
-  const text = `${merchant || ''} ${note || ''}`.toLowerCase()
-  
-  const categories = {
-    'Alimentación': ['supermercado', 'mercado', 'carrefour', 'mercadona', 'comida'],
-    'Transporte': ['gasolina', 'combustible', 'taxi', 'uber', 'metro', 'bus'],
-    'Salud': ['farmacia', 'medicina', 'hospital', 'médico'],
-    'Entretenimiento': ['cine', 'netflix', 'spotify', 'gaming'],
-    'Hogar': ['ikea', 'ferretería', 'electricidad', 'agua', 'gas'],
-    'Educación': ['curso', 'libro', 'universidad', 'formación']
-  }
-  
-  for (const [category, keywords] of Object.entries(categories)) {
-    if (keywords.some(keyword => text.includes(keyword))) {
-      return category
-    }
-  }
-  
-  return 'Otros'
+/**
+ * Categoría sugerida para un gasto que llega por webhook, resuelta contra las
+ * categorías del usuario. Si no se pueden leer, 'Otros': es preferible una
+ * categoría visible y corregible a bloquear una automatización.
+ */
+async function sugerirCategoriaDelUsuario(
+  supabaseAdmin: SupabaseClient,
+  data: N8nExpenseData
+): Promise<string> {
+  const { data: filas, error } = await supabaseAdmin
+    .from('user_categories')
+    .select('name')
+    .eq('user_id', data.userId)
+
+  if (error) console.error('Error leyendo las categorías del usuario:', error)
+
+  const categorias = (filas || []).map((c: { name: string }) => c.name)
+  return sugerirCategoria(`${data.merchant || ''} ${data.note || ''}`, categorias) ?? 'Otros'
 }
 
 // Función para construir nota descriptiva
