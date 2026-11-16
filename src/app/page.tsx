@@ -8,6 +8,7 @@ import { ExpenseCard } from "@/components/ui/expense-card"
 import { ExpenseForm } from "@/components/ui/expense-form"
 import { ExpenseHistory } from "@/components/ui/expense-history"
 import { CardImport } from "@/components/ui/card-import"
+import { CardBudgetView } from "@/components/ui/card-budget"
 import { SettingsView } from "@/components/ui/settings-view"
 import { useExpensesHybrid } from "@/hooks/use-expenses-hybrid"
 import { useAuth } from "@/components/auth-provider"
@@ -446,11 +447,21 @@ export default function ExpenseTrackerApp() {
           </TabsContent>
 
           <TabsContent value="cards">
-            <CardImport
-              userId={user?.id ?? ""}
-              categories={categories}
-              onImported={reload}
-            />
+            <div className="space-y-4">
+              <CardBudgetView
+                user={user}
+                expenses={expenses}
+                availableMonths={availableMonths}
+                isMonthLoaded={isMonthLoaded}
+                loadMonth={loadMonth}
+                loadingMonth={loadingMonth}
+              />
+              <CardImport
+                userId={user?.id ?? ""}
+                categories={categories}
+                onImported={reload}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="settings">
