@@ -42,6 +42,7 @@ export interface ExpenseFormProps {
     date: Date
     note: string
     isRecurring?: boolean
+    cardLast4?: string | null
   }
   addCategory?: (cat: string) => void
   /**
@@ -69,6 +70,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory, 
           date: typeof initialValues.date === 'string' ? new Date(initialValues.date) : initialValues.date,
           note: initialValues.note,
           isRecurring: initialValues.isRecurring || false,
+          cardLast4: initialValues.cardLast4 || "none",
         }
       : {
           amount: "",

@@ -30,6 +30,8 @@ interface Expense {
   date: string
   note?: string
   isRecurring?: boolean
+  source?: string
+  cardLast4?: string | null
 }
 
 interface ExpenseHistoryProps {
@@ -70,6 +72,10 @@ export function ExpenseHistory({
     }
   }
 
+  // ¿El gasto en edición admite cambiar de tarjeta? Solo los manuales: en un
+  // importado la tarjeta viene del extracto y es un hecho, no una elección.
+  const editandoManual = !!expenseToEdit && expenseToEdit.source !== "card_import"
+
   const handleEdit = (values: any) => {
     if (expenseToEdit && onEditExpense) {
       onEditExpense(expenseToEdit.id, {
@@ -78,10 +84,24 @@ export function ExpenseHistory({
         date: formatDateToString(values.date),
         note: values.note,
         isRecurring: values.isRecurring,
+        // Solo se envía para manuales: así updateExpense no recibe nunca el
+        // campo para un importado y su tarjeta queda tan intocable como antes.
+        ...(editandoManual
+          ? { cardLast4: values.cardLast4 && values.cardLast4 !== "none" ? values.cardLast4 : null }
+          : {}),
       })
       setExpenseToEdit(null)
     }
   }
+
+  // Tarjetas conocidas para el desplegable cerrado al editar un gasto manual.
+  const knownCards = useMemo(
+    () =>
+      Array.from(
+        new Set(expenses.map((e) => e.cardLast4).filter((l): l is string => !!l))
+      ).sort(),
+    [expenses]
+  )
 
   // Meses cargados en memoria. Como conjunto y no con isMonthLoaded() por mes:
   // esa función recorre el array de gastos en cada llamada, y el volumen crece
@@ -416,12 +436,14 @@ export function ExpenseHistory({
             <ExpenseForm
               onSubmit={handleEdit}
               categories={categories}
+              cards={editandoManual ? knownCards : undefined}
               initialValues={{
                 amount: expenseToEdit.amount,
                 category: expenseToEdit.category,
                 date: new Date(expenseToEdit.date),
                 note: expenseToEdit.note || "",
                 isRecurring: expenseToEdit.isRecurring || false,
+                cardLast4: expenseToEdit.cardLast4 ?? null,
               }}
             />
           )}

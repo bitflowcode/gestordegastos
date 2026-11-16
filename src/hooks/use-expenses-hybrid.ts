@@ -469,15 +469,18 @@ export function useExpensesHybrid(user: User | null) {
       // `note: updatedExpense.note || null` borraba la nota en cualquier
       // actualización parcial, y lo mismo `is_recurring`.
       //
-      // Los campos del módulo de tarjetas no se tocan nunca aquí: así,
-      // recategorizar un movimiento importado desde el Historial no le borra el
-      // external_id, que es la clave de la deduplicación.
+      // Los campos del módulo de tarjetas no se tocan aquí, con UNA excepción:
+      // `cardLast4`, para poder corregir a qué tarjeta se imputó un gasto
+      // manual. El Historial solo lo envía al editar manuales, así que el
+      // external_id de un importado —la clave de la deduplicación— y su
+      // tarjeta de extracto siguen siendo intocables.
       const payload: Record<string, unknown> = {}
       if (updatedExpense.amount !== undefined) payload.amount = updatedExpense.amount
       if (updatedExpense.category !== undefined) payload.category = updatedExpense.category
       if (updatedExpense.date !== undefined) payload.date = updatedExpense.date
       if (updatedExpense.note !== undefined) payload.note = updatedExpense.note || null
       if (updatedExpense.isRecurring !== undefined) payload.is_recurring = updatedExpense.isRecurring
+      if (updatedExpense.cardLast4 !== undefined) payload.card_last4 = updatedExpense.cardLast4 || null
 
       const { error } = await supabase
         .from('user_expenses')
