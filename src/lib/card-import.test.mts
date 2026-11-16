@@ -102,6 +102,17 @@ const incluida = construirFila(analisis.nuevos[0], 'user-1', idFalso, true)
 eq('marcada como importada', incluida.source, 'card_import')
 eq('conserva el identificador del proveedor', incluida.external_id, 'CARD-NUEVO')
 eq('divisa y original siempre persistidos', [incluida.currency, incluida.original_amount, incluida.exchange_rate], ['EUR', 11.6, 1])
+// La nota es el COMERCIO, no la descripción: la de Wise es una frase entera
+// que repite el importe y en el Historial enterraba lo único legible.
+eq('la nota prefiere el comercio', incluida.note, 'MERCADONA 4321')
+eq(
+  'sin comercio cae a la descripción',
+  construirFila(
+    { ...analisis.nuevos[0], movimiento: { ...analisis.nuevos[0].movimiento, merchant: '', description: 'Transacción con tarjeta' } },
+    'user-1', idFalso, true
+  ).note,
+  'Transacción con tarjeta'
+)
 const descartada = construirFila(analisis.nuevos[1], 'user-1', idFalso, false)
 eq('el descartado SE ESCRIBE, marcado', descartada.source, 'card_import_excluded')
 eq('y conserva su external_id, que es lo que evita que reaparezca', descartada.external_id, 'CARD-USD')

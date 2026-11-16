@@ -216,7 +216,11 @@ export function construirFila(
     amount: analizado.importeBase,
     category: analizado.categoria ?? 'Otros',
     date: m.date,
-    note: m.description || m.merchant || 'Movimiento de tarjeta',
+    // Comercio primero: la descripción de Wise es una frase entera que repite
+    // el importe («Transacción con tarjeta de 7,30 EUR emitida por…») y en el
+    // Historial enterraba lo único útil. El detalle de divisa original que esa
+    // frase lleva se puede consultar en el extracto; la nota es para leerse.
+    note: m.merchant || m.description || 'Movimiento de tarjeta',
     is_recurring: false,
     source: incluir ? 'card_import' : 'card_import_excluded',
     external_id: m.externalId,
