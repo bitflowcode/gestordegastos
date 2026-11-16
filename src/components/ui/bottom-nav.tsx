@@ -7,8 +7,11 @@
 // esquinas redondeadas y sombra. No es estética nada más: al no tocar el
 // borde inferior convive bien con la barra de gestos del iPhone, con la de
 // gestos de Android y con la de tres botones, sin depender de que cada
-// sistema reporte bien su safe-area. El margen inferior SUMA el safe-area
-// cuando existe (iPhone) y se queda en el fijo cuando no (Android 3 botones).
+// sistema reporte bien su safe-area. El margen inferior es el MAYOR entre el
+// fijo y el safe-area, no la suma: sumando, en iPhone (safe-area ~34px) la
+// barra flotaba demasiado alta respecto a Android (safe-area 0). Con max(),
+// en iPhone queda justo sobre la raya de gestos y en Android a 12px del
+// borde, a la misma altura visual.
 // Requiere viewport-fit=cover en el layout; sin él, env() vale siempre 0.
 
 import { CreditCard, History, Home, PlusCircle, Settings } from "lucide-react"
@@ -30,7 +33,7 @@ interface BottomNavProps {
 export function BottomNav({ activeTab, onChange }: BottomNavProps) {
   return (
     <nav
-      className="sm:hidden fixed z-40 inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))]"
+      className="sm:hidden fixed z-40 inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))]"
       aria-label="Navegación principal"
     >
       <div
