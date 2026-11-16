@@ -405,6 +405,10 @@ export function useExpensesHybrid(user: User | null) {
           date: newExpense.date,
           note: newExpense.note || null,
           is_recurring: newExpense.isRecurring || false,
+          // Imputación manual a una tarjeta: solo el last4. El source se queda
+          // en 'manual' (el default de la columna): no viene de un extracto y
+          // no debe entrar en el juego de external_id del importador.
+          card_last4: newExpense.cardLast4 || null,
         })
 
       if (error) {

@@ -29,6 +29,8 @@ const formSchema = z.object({
   }),
   note: z.string().optional(),
   isRecurring: z.boolean().optional(),
+  // 'none' = sin tarjeta. Radix Select no admite el valor vacío.
+  cardLast4: z.string().optional(),
 })
 
 export interface ExpenseFormProps {
@@ -42,9 +44,16 @@ export interface ExpenseFormProps {
     isRecurring?: boolean
   }
   addCategory?: (cat: string) => void
+  /**
+   * Tarjetas conocidas (last4), para imputar el gasto a una. Desplegable
+   * CERRADO a propósito: se elige entre las tarjetas detectadas en los
+   * extractos, no se teclea, para que un dedo torcido no invente una tarjeta
+   * y desvíe el presupuesto. Sin tarjetas, el campo no se muestra.
+   */
+  cards?: string[]
 }
 
-export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }: ExpenseFormProps) {
+export function ExpenseForm({ onSubmit, categories, initialValues, addCategory, cards }: ExpenseFormProps) {
   const [showScanner, setShowScanner] = useState(false)
   const [addingCategory, setAddingCategory] = useState(false)
   const [newCategory, setNewCategory] = useState("")
@@ -67,6 +76,7 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
           date: new Date(),
           note: "",
           isRecurring: false,
+          cardLast4: "none",
         },
   })
 
@@ -312,6 +322,37 @@ export function ExpenseForm({ onSubmit, categories, initialValues, addCategory }
             </FormItem>
           )}
         />
+
+        {cards && cards.length > 0 && (
+          <FormField
+            control={form.control}
+            name="cardLast4"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tarjeta (opcional)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value ?? "none"}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sin tarjeta" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">Sin tarjeta</SelectItem>
+                    {cards.map((last4) => (
+                      <SelectItem key={last4} value={last4}>
+                        •••• {last4}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Un gasto imputado a una tarjeta cuenta en su presupuesto sin salir del extracto.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}

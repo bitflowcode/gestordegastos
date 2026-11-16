@@ -108,6 +108,16 @@ export default function ExpenseTrackerApp() {
     [expenses, selectedMonth]
   )
 
+  // Tarjetas detectadas en los gastos cargados: alimentan el desplegable
+  // CERRADO del gasto manual (se elige, no se teclea).
+  const knownCards = useMemo(
+    () =>
+      Array.from(
+        new Set(expenses.map(e => e.cardLast4).filter((l): l is string => !!l))
+      ).sort(),
+    [expenses]
+  )
+
   // Funciones para navegar entre meses. El mes se selecciona igualmente aunque
   // no esté cargado: mientras llega, el panel dice que está cargando en lugar de
   // enseñar un total de cero.
@@ -147,6 +157,9 @@ export default function ExpenseTrackerApp() {
       date: dateString,
       note: values.note || "",
       isRecurring: values.isRecurring || false,
+      // Gasto manual imputado a una tarjeta: cuenta en su presupuesto sin
+      // haber salido del extracto. El source sigue siendo 'manual'.
+      cardLast4: values.cardLast4 && values.cardLast4 !== "none" ? values.cardLast4 : null,
     })
     setActiveTab("dashboard")
   }
@@ -430,7 +443,12 @@ export default function ExpenseTrackerApp() {
           </TabsContent>
 
           <TabsContent value="add-expense">
-            <ExpenseForm onSubmit={handleSubmitExpense} categories={categories} addCategory={addCategory} />
+            <ExpenseForm
+              onSubmit={handleSubmitExpense}
+              categories={categories}
+              addCategory={addCategory}
+              cards={knownCards}
+            />
           </TabsContent>
 
           <TabsContent value="history">
