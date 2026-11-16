@@ -15,6 +15,7 @@ import { useAuth } from "@/components/auth-provider"
 import { formatDateToString, formatMonthLabel } from "@/lib/utils"
 import { useState, useEffect, useMemo } from "react"
 import { FabAddExpense } from "@/components/ui/fab-add-expense"
+import { BottomNav } from "@/components/ui/bottom-nav"
 import { ChevronLeft, ChevronRight, Edit, Trash2, Cloud, Loader2, User } from "lucide-react"
 import { useRecurringExpenses } from "@/hooks/use-recurring-expenses"
 import { RecurringExpenseForm } from "@/components/ui/recurring-expense-form"
@@ -240,7 +241,8 @@ export default function ExpenseTrackerApp() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-screen-lg">
+    // pb-24 en móvil: hueco para la barra de navegación inferior fija.
+    <div className="container mx-auto p-6 pb-24 sm:pb-6 max-w-screen-lg">
         <h1 className="text-3xl font-bold mb-6 text-center">GastoGuru</h1>
 
         {/* Upgrade Prompt - mostrar en el dashboard o por click manual */}
@@ -266,7 +268,9 @@ export default function ExpenseTrackerApp() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-4">
+          {/* En móvil las cinco etiquetas no caben y se solapan: ahí navega
+              la barra inferior (BottomNav) y esta lista se oculta. */}
+          <TabsList className="hidden sm:grid w-full grid-cols-5 mb-4">
             <TabsTrigger value="dashboard">Inicio</TabsTrigger>
             <TabsTrigger value="add-expense">Agregar Gasto</TabsTrigger>
             <TabsTrigger value="history">Historial</TabsTrigger>
@@ -527,6 +531,8 @@ export default function ExpenseTrackerApp() {
             />
           </TabsContent>
         </Tabs>
+
+        <BottomNav activeTab={activeTab} onChange={setActiveTab} />
 
         {/* Auth Modal */}
         <AuthModal
