@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExpenseCard } from "@/components/ui/expense-card"
 import { ExpenseForm } from "@/components/ui/expense-form"
 import { ExpenseHistory } from "@/components/ui/expense-history"
+import { CardImport } from "@/components/ui/card-import"
 import { SettingsView } from "@/components/ui/settings-view"
 import { useExpensesHybrid } from "@/hooks/use-expenses-hybrid"
 import { useAuth } from "@/components/auth-provider"
@@ -59,6 +60,7 @@ export default function ExpenseTrackerApp() {
     loadMonth,
     isMonthLoaded,
     loadingMonth,
+    reload,
   } = useExpensesHybrid(user)
 
   const {
@@ -250,10 +252,11 @@ export default function ExpenseTrackerApp() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsList className="grid w-full grid-cols-5 mb-4">
             <TabsTrigger value="dashboard">Inicio</TabsTrigger>
             <TabsTrigger value="add-expense">Agregar Gasto</TabsTrigger>
             <TabsTrigger value="history">Historial</TabsTrigger>
+            <TabsTrigger value="cards">Tarjetas</TabsTrigger>
             <TabsTrigger value="settings">Configuración</TabsTrigger>
           </TabsList>
 
@@ -439,6 +442,14 @@ export default function ExpenseTrackerApp() {
               isMonthLoaded={isMonthLoaded}
               loadMonth={loadMonth}
               loadingMonth={loadingMonth}
+            />
+          </TabsContent>
+
+          <TabsContent value="cards">
+            <CardImport
+              userId={user?.id ?? ""}
+              categories={categories}
+              onImported={reload}
             />
           </TabsContent>
 
