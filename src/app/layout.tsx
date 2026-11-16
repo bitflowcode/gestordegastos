@@ -34,6 +34,9 @@ export const viewport = {
   userScalable: false,
   themeColor: "#2563eb",
   colorScheme: "light dark",
+  // Sin esto, env(safe-area-inset-*) vale siempre 0 y la navegación inferior
+  // queda pegada a la barra de gestos del iPhone.
+  viewportFit: "cover",
 }
 
 export default function RootLayout({

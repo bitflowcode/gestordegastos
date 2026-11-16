@@ -241,8 +241,10 @@ export default function ExpenseTrackerApp() {
   }
 
   return (
-    // pb-24 en móvil: hueco para la barra de navegación inferior fija.
-    <div className="container mx-auto p-6 pb-24 sm:pb-6 max-w-screen-lg">
+    // Hueco inferior en móvil para la barra de navegación flotante: su altura
+    // más su margen más el safe-area. Sin esto, el final de las listas queda
+    // tapado por el menú.
+    <div className="container mx-auto p-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:pb-6 max-w-screen-lg">
         <h1 className="text-3xl font-bold mb-6 text-center">GastoGuru</h1>
 
         {/* Upgrade Prompt - mostrar en el dashboard o por click manual */}
