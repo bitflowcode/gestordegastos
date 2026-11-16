@@ -32,7 +32,14 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#2563eb",
+  // Android pinta con esto la barra de estado y la de navegación de la PWA
+  // instalada (iOS lo ignora). Con el azul de marca salían dos franjas azules
+  // arriba y abajo; debe FUNDIRSE con el fondo de la app, no contrastar.
+  // El valor oscuro es el --background del tema oscuro (globals.css).
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#020817" },
+  ],
   colorScheme: "light dark",
   // Sin esto, env(safe-area-inset-*) vale siempre 0 y la navegación inferior
   // queda pegada a la barra de gestos del iPhone.
