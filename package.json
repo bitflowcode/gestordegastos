@@ -9,7 +9,10 @@
     "lint": "next lint",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "test:currency": "node --experimental-strip-types src/lib/currency.test.mts",
-    "test:category": "node --experimental-strip-types src/lib/merchant-category.test.mts"
+    "test:category": "node --experimental-strip-types src/lib/merchant-category.test.mts",
+    "test:statement": "node --experimental-strip-types src/lib/card-statement.test.mts",
+    "test:import": "node --import ./scripts/registrar-ts.mjs --experimental-strip-types src/lib/card-import.test.mts",
+    "test": "npm run test:currency && npm run test:category && npm run test:statement && npm run test:import"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
