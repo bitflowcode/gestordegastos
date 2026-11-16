@@ -230,16 +230,28 @@ export function useExpensesHybrid(user: User | null) {
       // permite ofrecerlos en el Historial y pedirlos con loadMonth(). Sin esta
       // consulta, la carga bajo demanda no tendría disparador, porque el
       // selector se construiría solo con lo ya cargado.
-      const { data: monthsData, error: monthsError } = await supabase
-        .from('user_expenses')
-        .select('date')
-        .eq('user_id', user.id)
-        .neq('source', 'card_import_excluded')
-
-      // No aborta la carga —los gastos de la ventana ya están—, pero tampoco se
-      // ignora: sin esta comprobación, un fallo aquí dejaba availableMonths
-      // vacío y el Historial se quedaba sin selector de meses en silencio.
-      if (monthsError) console.error("Error cargando los meses disponibles:", monthsError)
+      //
+      // El DISTINCT se hace en la base (sql/03_meses_disponibles.sql): la
+      // consulta antigua select('date') traía una fila por gasto y PostgREST
+      // la recorta a 1.000 en silencio, así que con el volumen del importador
+      // los meses antiguos habrían desaparecido del selector sin ningún error.
+      let mesesServidor: string[] | null = null
+      const { data: rpcMeses, error: rpcError } = await supabase.rpc('meses_con_gastos')
+      if (!rpcError && Array.isArray(rpcMeses)) {
+        mesesServidor = (rpcMeses as Array<{ mes: string }>).map(r => r.mes)
+      } else {
+        // Respaldo con la consulta antigua (tope de 1.000 filas): cubre el
+        // intervalo hasta que la función esté creada en la base. Si también
+        // falla, mesesServidor queda en null y se degrada a la ventana.
+        if (rpcError) console.error("Error en meses_con_gastos, usando el respaldo:", rpcError)
+        const { data: monthsData, error: monthsError } = await supabase
+          .from('user_expenses')
+          .select('date')
+          .eq('user_id', user.id)
+          .neq('source', 'card_import_excluded')
+        if (monthsError) console.error("Error cargando los meses disponibles:", monthsError)
+        else mesesServidor = (monthsData || []).map((r: { date: string }) => r.date.slice(0, 7))
+      }
 
       // Cargar categorías
       const { data: categoriesData, error: categoriesError } = await supabase
@@ -285,12 +297,8 @@ export function useExpensesHybrid(user: User | null) {
       setCategories(mappedCategories)
       // Si la consulta de meses falló, se degrada a los meses de la ventana ya
       // cargada: son menos de los que hay, pero todos son ciertos y navegables.
-      const mesesOrigen = monthsError
-        ? mappedExpenses.map(e => e.date)
-        : (monthsData || []).map((r: { date: string }) => r.date)
-      setAvailableMonths(
-        Array.from(new Set(mesesOrigen.map(d => d.slice(0, 7)))).sort()
-      )
+      const mesesOrigen = mesesServidor ?? mappedExpenses.map(e => e.date.slice(0, 7))
+      setAvailableMonths(Array.from(new Set(mesesOrigen)).sort())
     } catch (error) {
       console.error("Error loading from Supabase:", error)
       // Fallback a localStorage si hay error
